@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Opdracht {
+  id         Int      @id @default(autoincrement())
+  status     String   @default("nieuw")
+  createdAt  DateTime @default(now())
+
+  woning     Woning?
+  resultaten KeuringResultaat[]
+}
+
+model Woning {
+  id            Int     @id @default(autoincrement())
+  opdrachtId    Int     @unique
+  typeWoning    String?
+  woningGrootte String?
+  bouwwijze     String?
+
+  opdracht      Opdracht @relation(fields: [opdrachtId], references: [id])
+}
+
+model KeuringNode {
+  id           Int     @id
+  parentId     Int?
+  omschrijving String
+  level        Int?
+  isRapport    Boolean?
+  pdfSortOrder Int?
+
+  resultaten       KeuringResultaat[]
+  parentRelations  KeuringNodeRelation[] @relation("ParentRelations")
+  childRelations   KeuringNodeRelation[] @relation("ChildRelations")
+}
+
+model KeuringNodeRelation {
+  id        Int  @id @default(autoincrement())
+  parentId  Int
+  childId   Int
+  sortOrder Int?
+
+  parent KeuringNode @relation("ParentRelations", fields: [parentId], references: [id])
+  child  KeuringNode @relation("ChildRelations", fields: [childId], references: [id])
+
+  @@unique([parentId, childId])
+}
+
+model KeuringResultaat {
+  id            Int      @id @default(autoincrement())
+  opdrachtId    Int
+  keuringNodeId Int
+  status        String?
+  opmerking     String?
+  createdAt     DateTime @default(now())
+
+  opdracht    Opdracht    @relation(fields: [opdrachtId], references: [id])
+  keuringNode KeuringNode @relation(fields: [keuringNodeId], references: [id])
+
+  gebreken Gebrek[]
+}
+
+model Gebrek {
+  id                 Int     @id @default(autoincrement())
+  keuringResultaatId Int
+  titel              String?
+  omschrijving       String?
+  ernst              String?
+  fotoPad            String?
+
+  keuringResultaat KeuringResultaat @relation(fields: [keuringResultaatId], references: [id])
+}
