@@ -1,6 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
+const cache = new Map<
+  number,
+  { id: number; omschrijving: string; hasChildren: boolean }[]
+>();
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -8,6 +15,11 @@ export async function GET(request: Request) {
 
     if (!id || Number.isNaN(id)) {
       return NextResponse.json([]);
+    }
+
+    const cached = cache.get(id);
+    if (cached) {
+      return NextResponse.json(cached);
     }
 
     const relations = await prisma.keuringNodeRelation.findMany({
@@ -25,13 +37,15 @@ export async function GET(request: Request) {
       },
     });
 
-    return NextResponse.json(
-      relations.map((relation) => ({
-        id: relation.child.id,
-        omschrijving: relation.child.omschrijving,
-        hasChildren: relation.child.childRelations.length > 0,
-      }))
-    );
+    const children = relations.map((relation) => ({
+      id: relation.child.id,
+      omschrijving: relation.child.omschrijving,
+      hasChildren: relation.child.childRelations.length > 0,
+    }));
+
+    cache.set(id, children);
+
+    return NextResponse.json(children);
   } catch (error) {
     console.error("Failed to load keuring children", error);
     return NextResponse.json(
