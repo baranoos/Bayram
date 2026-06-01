@@ -3,27 +3,153 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model DynamicOption {
+  id        Int      @id @default(autoincrement())
+  group     String
+  value     String
+  label     String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([group, value])
+  @@index([group, sortOrder])
 }
 
 model Opdracht {
-  id         Int      @id @default(autoincrement())
-  status     String   @default("nieuw")
-  createdAt  DateTime @default(now())
+  id                   Int      @id @default(autoincrement())
+  status               String   @default("nieuw")
+  opdrachtgeverNaam    String
+  opdrachtgeverEmail   String?
+  opdrachtgeverTelefoon String?
+  adresHuisnummer      String?
+  adresHuisnummerToevoeging String?
+  typeWoning           String?
+  keuringType          String?
+  adresStraat          String
+  adresPostcode        String
+  adresPlaats          String
+  contractpartijNaam   String?
+  projectOmschrijving  String?
+  tarief               String?
+  ontmoetingsPlaats    String?
+  naamBouwer           String?
+  emailAdres2          String?
+  opmerkingTekst       String?
+  betalingswijze       String?
+  extraUren            Int      @default(0)
+  waddentoeslag        Boolean  @default(false)
+  ehbaCorrectie        Boolean  @default(false)
+  correcties           String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  woning     Woning?
-  resultaten KeuringResultaat[]
+  woning       Woning?
+  resultaten   KeuringResultaat[]
+  meterstanden Meterstand?
+  rapporten    Rapport[]
+  opmerkingen  Opmerking[]
+  fotos        Foto[]
 }
 
 model Woning {
-  id            Int     @id @default(autoincrement())
-  opdrachtId    Int     @unique
-  typeWoning    String?
-  woningGrootte String?
-  bouwwijze     String?
+  id             Int     @id @default(autoincrement())
+  opdrachtId     Int     @unique
+  fotoVoorbladPad String?
+  objectNaam     String?
+  projectNaam    String?
+  typeWoning     String?
+  woningGrootte  String?
+  bouwwijze      String?
+  garantieRegeling String?
+  bouwjaar       Int?
+  omschrijving   String?
+  bouwer         String?
+  vestigingsplaatsBouwer String?
+  contractpartij String?
+  vestigingsplaatsContractpartij String?
+  vertegenwoordiger String?
+  weersomstandigheden String?
+  inregelrapportMvwtw String?
+  energielabel   String?
+  beglazing      String?
+  opmerkingen    String?
+  omstandigheden String?
+  opmerking      String?
 
-  opdracht      Opdracht @relation(fields: [opdrachtId], references: [id])
+  opdracht           Opdracht        @relation(fields: [opdrachtId], references: [id], onDelete: Cascade)
+  omstandigheidItems Omstandigheid[]
+}
+
+model Omstandigheid {
+  id          Int     @id @default(autoincrement())
+  woningId    Int
+  label       String
+  waarde      String
+  toelichting String?
+  sortOrder   Int     @default(0)
+
+  woning Woning @relation(fields: [woningId], references: [id], onDelete: Cascade)
+}
+
+model Meterstand {
+  id             Int      @id @default(autoincrement())
+  opdrachtId     Int      @unique
+  elektraI       String?
+  elektraII      String?
+  elektraRetourI String?
+  elektraRetourII String?
+  water          String?
+  warmte         String?
+  warmwater      String?
+  koeling        String?
+  gas            String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  opdracht Opdracht @relation(fields: [opdrachtId], references: [id], onDelete: Cascade)
+}
+
+model Rapport {
+  id                  Int      @id @default(autoincrement())
+  opdrachtId          Int
+  rapporttype         String
+  representatiefEmail String?
+  status              String   @default("concept")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  opdracht Opdracht @relation(fields: [opdrachtId], references: [id], onDelete: Cascade)
+}
+
+model Opmerking {
+  id         Int      @id @default(autoincrement())
+  opdrachtId Int
+  onderwerp  String
+  tekst      String
+  createdAt  DateTime @default(now())
+
+  opdracht Opdracht @relation(fields: [opdrachtId], references: [id], onDelete: Cascade)
+}
+
+model Foto {
+  id                 Int      @id @default(autoincrement())
+  opdrachtId         Int?
+  gebrekeId          Int?
+  keuringResultaatId Int?
+  pad                String
+  beschrijving       String?
+  createdAt          DateTime @default(now())
+
+  opdracht         Opdracht?         @relation(fields: [opdrachtId], references: [id], onDelete: Cascade)
+  gebrek           Gebrek?           @relation(fields: [gebrekeId], references: [id], onDelete: Cascade)
+  keuringResultaat KeuringResultaat? @relation(fields: [keuringResultaatId], references: [id], onDelete: Cascade)
 }
 
 model KeuringNode {
@@ -59,19 +185,38 @@ model KeuringResultaat {
   opmerking     String?
   createdAt     DateTime @default(now())
 
-  opdracht    Opdracht    @relation(fields: [opdrachtId], references: [id])
+  opdracht    Opdracht    @relation(fields: [opdrachtId], references: [id], onDelete: Cascade)
   keuringNode KeuringNode @relation(fields: [keuringNodeId], references: [id])
 
   gebreken Gebrek[]
+  fotos    Foto[]
+
+  @@unique([opdrachtId, keuringNodeId])
 }
 
 model Gebrek {
   id                 Int     @id @default(autoincrement())
   keuringResultaatId Int
+  aantal             Int     @default(1)
+  ernstig            Boolean @default(false)
+  standaardtekst     String?
+  locatie            String?
+  categorie          String?
   titel              String?
   omschrijving       String?
   ernst              String?
   fotoPad            String?
 
-  keuringResultaat KeuringResultaat @relation(fields: [keuringResultaatId], references: [id])
+  keuringResultaat KeuringResultaat @relation(fields: [keuringResultaatId], references: [id], onDelete: Cascade)
+  fotos            Foto[]
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  email        String?  @unique
+  passwordHash String
+  role         String   @default("partner")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

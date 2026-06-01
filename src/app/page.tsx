@@ -1,65 +1,170 @@
-import Image from "next/image";
+import Link from "next/link";
+import { formatDateTime, getDashboardOpdrachten, getStatusLabel } from "@/lib/opdrachten";
 
-export default function Home() {
+function statusClasses(status: string) {
+  switch (status) {
+    case "afgerond":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "in behandeling":
+      return "border-amber-200 bg-amber-50 text-amber-700";
+    default:
+      return "border-slate-200 bg-slate-100 text-slate-600";
+  }
+}
+
+export default async function Home() {
+  const { opdrachten, error: databaseError } = await getDashboardOpdrachten();
+  const openCount = opdrachten.filter((opdracht) => opdracht.status !== "afgerond").length;
+  const activeCount = opdrachten.filter((opdracht) => opdracht.status === "in behandeling").length;
+  const defectCount = opdrachten.reduce((total, opdracht) => total + opdracht.gebrekCount, 0);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="mx-auto min-h-screen max-w-screen-2xl px-4 py-6 lg:px-6">
+      <div className="mb-6 flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-slate-400">
+            Eigen Huis inspectie
           </p>
+          <div>
+            <h1 className="text-3xl font-semibold text-slate-950">Opdrachtenoverzicht</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+              Professioneel dashboard voor woninginspecties, keuringsdossiers en rapportage.
+            </p>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/opdracht/nieuw"
+            className="inline-flex items-center justify-center rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Nieuwe opdracht
+          </Link>
+          <div className="rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+            {opdrachten.length} dossiers zichtbaar
+          </div>
         </div>
-      </main>
-    </div>
+      </div>
+
+      {databaseError ? (
+        <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+          De database is nu niet bereikbaar, dus het dashboard toont tijdelijk geen opdrachten.
+          Controleer of je Supabase DATABASE_URL klopt en of de database online is.
+        </div>
+      ) : null}
+
+      <div className="mb-6 grid gap-4 md:grid-cols-3">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm text-slate-500">Open dossiers</p>
+          <p className="mt-2 text-3xl font-semibold text-slate-950">{openCount}</p>
+        </div>
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm text-slate-500">In behandeling</p>
+          <p className="mt-2 text-3xl font-semibold text-blue-700">{activeCount}</p>
+        </div>
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm text-slate-500">Geregistreerde gebreken</p>
+          <p className="mt-2 text-3xl font-semibold text-rose-600">{defectCount}</p>
+        </div>
+      </div>
+
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-6 py-4">
+          <h2 className="text-lg font-semibold text-slate-950">Opdrachten</h2>
+          <p className="text-sm text-slate-500">Klik een opdracht open om naar de dossierwerkruimte te gaan.</p>
+        </div>
+
+        {opdrachten.length === 0 ? (
+          <div className="px-6 py-16 text-center">
+            <p className="text-lg font-medium text-slate-900">Nog geen opdrachten aanwezig</p>
+            <p className="mt-2 text-sm text-slate-500">Maak een nieuwe opdracht aan om het inspectiedossier te starten.</p>
+            <div className="mt-6">
+              <Link
+                href="/opdracht/nieuw"
+                className="inline-flex items-center justify-center rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+              >
+                Eerste opdracht toevoegen
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="hidden lg:block">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr className="text-left text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
+                    <th className="px-6 py-4">Opdracht</th>
+                    <th className="px-6 py-4">Opdrachtgever</th>
+                    <th className="px-6 py-4">Woning</th>
+                    <th className="px-6 py-4">Adres</th>
+                    <th className="px-6 py-4">Aangemaakt</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4">Defecten</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {opdrachten.map((opdracht) => (
+                    <tr key={opdracht.id} className="transition hover:bg-slate-50">
+                      <td className="px-6 py-4">
+                        <Link href={`/opdracht/${opdracht.id}/details`} className="font-semibold text-slate-900 hover:text-blue-700">
+                          #{opdracht.id}
+                        </Link>
+                        <p className="text-sm text-slate-500">{getStatusLabel(opdracht.status)}</p>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-700">
+                        <div className="font-medium text-slate-900">{opdracht.opdrachtgeverNaam}</div>
+                        <div className="text-slate-500">{opdracht.opdrachtgeverEmail ?? "Geen e-mail"}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-700">
+                        {opdracht.woning?.typeWoning ?? opdracht.typeWoning ?? "-"}
+                        {opdracht.woning?.woningGrootte ? (
+                          <div className="text-slate-500">{opdracht.woning.woningGrootte}</div>
+                        ) : null}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-700">
+                        <div>{opdracht.adresStraat}</div>
+                        <div className="text-slate-500">{opdracht.adresPostcode} {opdracht.adresPlaats}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-700">{formatDateTime(opdracht.createdAt)}</td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${statusClasses(opdracht.status)}`}>
+                          {getStatusLabel(opdracht.status)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-slate-700">{opdracht.gebrekCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="grid gap-4 p-4 lg:hidden">
+              {opdrachten.map((opdracht) => (
+                <Link
+                  key={opdracht.id}
+                  href={`/opdracht/${opdracht.id}/details`}
+                  className="rounded-3xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-white"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Opdracht #{opdracht.id}</p>
+                      <h3 className="mt-1 text-base font-semibold text-slate-950">{opdracht.opdrachtgeverNaam}</h3>
+                      <p className="mt-1 text-sm text-slate-500">{opdracht.adresStraat}, {opdracht.adresPlaats}</p>
+                    </div>
+                    <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${statusClasses(opdracht.status)}`}>
+                      {getStatusLabel(opdracht.status)}
+                    </span>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+                    <span>{opdracht.woning?.typeWoning ?? opdracht.typeWoning ?? "Woning"}</span>
+                    <span>{opdracht.gebrekCount} gebreken</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+    </main>
   );
 }
