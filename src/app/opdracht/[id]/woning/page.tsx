@@ -4,6 +4,7 @@ import SectionCard from "@/components/workspace/SectionCard";
 import { prisma } from "@/lib/prisma";
 import { getWorkspaceOpdracht } from "@/lib/opdrachten";
 import { getWorkspaceOptions } from "@/lib/dynamicOptions";
+import FotoVoorbladUpload from "@/components/woning/FotoVoorbladUpload";
 
 export default async function WoningPage({
   params,
@@ -33,7 +34,8 @@ export default async function WoningPage({
     const bouwjaar = bouwjaarRaw ? Number(bouwjaarRaw) : null;
     const omstandigheden = String(formData.get("omstandigheden") ?? "").trim() || null;
     const opmerking = String(formData.get("opmerking") ?? "").trim() || null;
-    const fotoVoorbladPad = String(formData.get("fotoVoorblad") ?? "").trim() || null;
+    const fotoUrls = (formData.getAll("fotoVoorblad") as string[]).filter(Boolean);
+    const fotoVoorbladPad = fotoUrls.length > 0 ? JSON.stringify(fotoUrls) : null;
     const garantieRegeling = String(formData.get("garantieRegeling") ?? "").trim() || null;
     const omschrijving = String(formData.get("omschrijving") ?? "").trim() || null;
     const bouwer = String(formData.get("bouwer") ?? "").trim() || null;
@@ -104,10 +106,10 @@ export default async function WoningPage({
     <form action={saveWoning} className="space-y-6">
       <SectionCard title="Object" description="Objectgegevens van het inspectiedossier.">
         <div className="grid gap-4 md:grid-cols-2">
-          <label className="grid gap-2 text-sm font-medium text-slate-700">
+          <div className="grid gap-2 text-sm font-medium text-slate-700">
             Foto voorblad
-            <input defaultValue={woning?.fotoVoorbladPad ?? ""} name="fotoVoorblad" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-300 focus:bg-white" />
-          </label>
+            <FotoVoorbladUpload defaultValue={woning?.fotoVoorbladPad} opdrachtId={opdrachtId} />
+          </div>
           <label className="grid gap-2 text-sm font-medium text-slate-700">
             Type woning*
             <select defaultValue={woning?.typeWoning ?? opdracht.typeWoning ?? ""} name="typeWoning" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-300 focus:bg-white">
@@ -224,9 +226,6 @@ export default async function WoningPage({
               <textarea defaultValue={woning?.opmerkingen ?? ""} name="opmerkingen" rows={4} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-300 focus:bg-white" />
             </label>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-              Deze gegevens blijven in MySQL opgeslagen en vormen de basis voor het inspectierapport.
-            </div>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">

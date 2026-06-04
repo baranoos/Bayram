@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Class-based dark mode — activates dark: variants when <html class="dark"> */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -25,6 +28,11 @@ body {
   font-family: var(--font-inter), Arial, Helvetica, sans-serif;
 }
 
+.dark body {
+  background: #0f172a;
+  color: #f1f5f9;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -37,7 +45,6 @@ textarea {
   font: inherit;
 }
 
-/* Light outline default for inputs and selects; allow button utility classes to override */
 input,
 select,
 textarea {
@@ -50,11 +57,14 @@ textarea {
   transition: background-color 120ms linear, border-color 120ms linear, box-shadow 120ms linear;
 }
 
-button {
-  /* don't force a background here so Tailwind/bg classes can style buttons */
+.dark input,
+.dark select,
+.dark textarea {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+  box-shadow: none;
 }
-
-/* Removed generic button hover to allow component-level hover styles to work */
 
 input:focus,
 select:focus,
@@ -65,4 +75,40 @@ button:focus {
   border-color: rgba(59,130,246,0.6);
 }
 
-/* Keep existing utility classes able to override defaults where needed */
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  background: #334155;
+  box-shadow: 0 0 0 4px rgba(59,130,246,0.12);
+  border-color: rgba(59,130,246,0.6);
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #475569;
+}
+
+/* ─── Dark mode: text & background helpers ──────────────────────── */
+/* These cover form labels and inline elements that don't have explicit dark: classes */
+.dark .text-slate-950 { color: #f8fafc; }
+.dark .text-slate-900 { color: #f1f5f9; }
+.dark .text-slate-800 { color: #e2e8f0; }
+.dark .text-slate-700 { color: #cbd5e1; }
+.dark .text-slate-600 { color: #94a3b8; }
+.dark .text-slate-500 { color: #94a3b8; }
+
+.dark .bg-white       { background-color: #1e293b; }
+.dark .bg-slate-50    { background-color: #0f172a; }
+.dark .bg-slate-100   { background-color: #1e293b; }
+
+.dark .border-slate-200 { border-color: #334155; }
+.dark .border-slate-300 { border-color: #475569; }
+.dark .divide-slate-200 > :not(:first-child) { border-color: #334155; }
+
+/* ─── Font size ─────────────────── */
+[data-fontsize="groot"] { font-size: 19px; }
+
+/* ─── Scrollbar ─────────────────── */
+.dark ::-webkit-scrollbar-track { background: #0f172a; }
+.dark ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }

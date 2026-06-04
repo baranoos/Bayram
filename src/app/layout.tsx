@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { AppHeader } from "@/components/auth/AppHeader";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -13,6 +14,14 @@ export const metadata: Metadata = {
   description: "Professionele woninginspectie en opdrachtbegeleiding",
 };
 
+const themeScript = `(function(){
+  var t=localStorage.getItem('eh-theme')||'system';
+  var f=localStorage.getItem('eh-fontsize')||'normaal';
+  var dark=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
+  if(dark)document.documentElement.classList.add('dark');
+  if(f==='groot')document.documentElement.setAttribute('data-fontsize','groot');
+})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -23,9 +32,14 @@ export default function RootLayout({
       lang="nl"
       className={`${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-slate-100 text-slate-900">
-        <AppHeader />
-        {children}
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+      <body className="min-h-full text-slate-900 dark:text-slate-100">
+        <ThemeProvider>
+          <AppHeader />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

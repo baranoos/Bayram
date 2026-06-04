@@ -33,39 +33,41 @@ export default async function DetailsPage({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      {/* Hero card */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">
               Details
             </p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-950">
+            <h2 className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
               Dossieroverzicht
             </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
               Overzicht van opdrachtgever, woning en voortgang binnen de opdrachtwerkruimte.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl bg-slate-50 px-4 py-3">
+            <div className="rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-700/50">
               <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Status</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{getStatusLabel(opdracht.status)}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{getStatusLabel(opdracht.status)}</p>
             </div>
-            <div className="rounded-2xl bg-slate-50 px-4 py-3">
+            <div className="rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-700/50">
               <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Defecten</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{metricLabel(defectCount)}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{metricLabel(defectCount)}</p>
             </div>
-            <div className="rounded-2xl bg-slate-50 px-4 py-3">
+            <div className="rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-700/50">
               <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Foto&apos;s</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{metricLabel(fotoCount)}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{metricLabel(fotoCount)}</p>
             </div>
           </div>
         </div>
       </div>
+
       <div className="flex justify-end">
         <a
           href={`/api/opdrachten/${opdracht.id}/export`}
-          className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium"
+          className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
         >
           Export JSON
         </a>
@@ -76,12 +78,12 @@ export default async function DetailsPage({
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
               <dt className="text-xs uppercase tracking-[0.25em] text-slate-400">Opdrachtgever</dt>
-              <dd className="mt-1 font-medium text-slate-900">{opdracht.opdrachtgeverNaam}</dd>
+              <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">{opdracht.opdrachtgeverNaam}</dd>
             </div>
             <div>
               <dt className="text-xs uppercase tracking-[0.25em] text-slate-400">Adres</dt>
-              <dd className="mt-1 font-medium text-slate-900">{opdracht.adresStraat}</dd>
-              <dd className="text-sm text-slate-500">{opdracht.adresPostcode} {opdracht.adresPlaats}</dd>
+              <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">{opdracht.adresStraat}</dd>
+              <dd className="text-sm text-slate-500 dark:text-slate-400">{opdracht.adresPostcode} {opdracht.adresPlaats}</dd>
               <dd className="mt-2">
                 <a
                   href={`https://www.funda.nl/zoeken/koop?q=${fundaQuery}`}
@@ -99,66 +101,54 @@ export default async function DetailsPage({
             </div>
             <div>
               <dt className="text-xs uppercase tracking-[0.25em] text-slate-400">E-mail</dt>
-              <dd className="mt-1 font-medium text-slate-900">{opdracht.opdrachtgeverEmail ?? "Niet ingevuld"}</dd>
+              <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">{opdracht.opdrachtgeverEmail ?? "Niet ingevuld"}</dd>
             </div>
             <div>
               <dt className="text-xs uppercase tracking-[0.25em] text-slate-400">Telefoon</dt>
-              <dd className="mt-1 font-medium text-slate-900">{opdracht.opdrachtgeverTelefoon ?? "Niet ingevuld"}</dd>
+              <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">{opdracht.opdrachtgeverTelefoon ?? "Niet ingevuld"}</dd>
             </div>
             <div>
               <dt className="text-xs uppercase tracking-[0.25em] text-slate-400">Type woning</dt>
-              <dd className="mt-1 font-medium text-slate-900">{opdracht.typeWoning ?? "Niet ingevuld"}</dd>
+              <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">{opdracht.typeWoning ?? "Niet ingevuld"}</dd>
             </div>
             <div>
               <dt className="text-xs uppercase tracking-[0.25em] text-slate-400">Aangemaakt</dt>
-              <dd className="mt-1 font-medium text-slate-900">{formatDateTime(opdracht.createdAt)}</dd>
+              <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">{formatDateTime(opdracht.createdAt)}</dd>
             </div>
           </dl>
         </SectionCard>
 
         <SectionCard title="Voortgang" description="Laatste registraties binnen het dossier.">
           <div className="space-y-4">
-            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-slate-900">Resultaten</p>
-                <p className="text-sm text-slate-500">Aantal keuringresultaten in MySQL</p>
+            {[
+              { label: "Resultaten", sub: "Aantal keuringresultaten in de database", value: metricLabel(opdracht.resultaten.length) },
+              { label: "Rapporten", sub: "Beschikbare rapportversies", value: metricLabel(rapportCount) },
+              { label: "Laatste wijziging", sub: "Op basis van de meest recente registratie", value: formatDateTime(opdracht.updatedAt) },
+            ].map(({ label, sub, value }) => (
+              <div key={label} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-700/50">
+                <div>
+                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{label}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{sub}</p>
+                </div>
+                <p className="text-sm font-semibold text-slate-950 dark:text-white">{value}</p>
               </div>
-              <p className="text-lg font-semibold text-slate-950">{metricLabel(opdracht.resultaten.length)}</p>
-            </div>
-            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-slate-900">Rapporten</p>
-                <p className="text-sm text-slate-500">Beschikbare rapportversies</p>
-              </div>
-              <p className="text-lg font-semibold text-slate-950">{metricLabel(rapportCount)}</p>
-            </div>
-            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-slate-900">Laatste wijziging</p>
-                <p className="text-sm text-slate-500">Op basis van de meest recente registratie</p>
-              </div>
-              <p className="text-sm font-semibold text-slate-950">
-                {formatDateTime(opdracht.updatedAt)}
-              </p>
-            </div>
+            ))}
           </div>
         </SectionCard>
       </div>
 
       <SectionCard title="Werkvoorraad" description="Snelle startpunten voor het inspectiedossier.">
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-medium text-slate-900">Woning</p>
-            <p className="mt-1 text-sm text-slate-500">Vul object- en projectgegevens verder aan.</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-medium text-slate-900">Keuring</p>
-            <p className="mt-1 text-sm text-slate-500">Werk door de kolommen en registreer gebreken.</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-medium text-slate-900">Rapportage</p>
-            <p className="mt-1 text-sm text-slate-500">Bereid de rapportversie voor en rond af.</p>
-          </div>
+          {[
+            { title: "Woning", sub: "Vul object- en projectgegevens verder aan." },
+            { title: "Keuring", sub: "Werk door de kolommen en registreer gebreken." },
+            { title: "Rapportage", sub: "Bereid de rapportversie voor en rond af." },
+          ].map(({ title, sub }) => (
+            <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-700/40">
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{sub}</p>
+            </div>
+          ))}
         </div>
       </SectionCard>
     </div>

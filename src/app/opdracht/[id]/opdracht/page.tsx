@@ -1,8 +1,10 @@
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { notFound } from "next/navigation";
 import SectionCard from "@/components/workspace/SectionCard";
 import { prisma } from "@/lib/prisma";
 import { getWorkspaceOpdracht } from "@/lib/opdrachten";
+import OpdrachtActieKnoppen from "@/components/opdracht/OpdrachtActieKnoppen";
 
 export default async function OpdrachtPage({
   params,
@@ -15,6 +17,12 @@ export default async function OpdrachtPage({
 
   if (!opdracht) {
     notFound();
+  }
+
+  async function deleteOpdracht() {
+    "use server";
+    await prisma.opdracht.delete({ where: { id: opdrachtId } });
+    redirect("/");
   }
 
   async function saveOpdracht(formData: FormData) {
@@ -60,7 +68,8 @@ export default async function OpdrachtPage({
   }
 
   return (
-    <form action={saveOpdracht} className="space-y-6">
+    <>
+    <form action={saveOpdracht} id="opdracht-main-form" className="space-y-6">
       <SectionCard title="Opdracht" description="Administratieve en financiële gegevens voor het dossier.">
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-2 text-sm font-medium text-slate-700">
@@ -85,15 +94,15 @@ export default async function OpdrachtPage({
           </label>
           <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
             Opdrachtgever
-            <input defaultValue={opdracht.opdrachtgeverNaam} name="opdrachtgeverNaam" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-300 focus:bg-white" readOnly />
+            <input defaultValue={opdracht.opdrachtgeverNaam} name="opdrachtgeverNaam" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-300 focus:bg-white" />
           </label>
           <label className="grid gap-2 text-sm font-medium text-slate-700">
             E-mail
-            <input defaultValue={opdracht.opdrachtgeverEmail ?? ""} name="opdrachtgeverEmail" type="email" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-300 focus:bg-white" readOnly />
+            <input defaultValue={opdracht.opdrachtgeverEmail ?? ""} name="opdrachtgeverEmail" type="email" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-300 focus:bg-white" />
           </label>
           <label className="grid gap-2 text-sm font-medium text-slate-700">
             Telefoon
-            <input defaultValue={opdracht.opdrachtgeverTelefoon ?? ""} name="opdrachtgeverTelefoon" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-300 focus:bg-white" readOnly />
+            <input defaultValue={opdracht.opdrachtgeverTelefoon ?? ""} name="opdrachtgeverTelefoon" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-300 focus:bg-white" />
           </label>
           <label className="grid gap-2 text-sm font-medium text-slate-700">
             Type woning
@@ -114,19 +123,9 @@ export default async function OpdrachtPage({
         </div>
       </SectionCard>
 
-      <div className="flex flex-wrap justify-end gap-3">
-        <button type="submit" name="intent" value="save" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:text-blue-700">
-          Opslaan
-        </button>
-        <button
-          type="submit"
-          name="intent"
-          value="finish"
-          className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700"
-        >
-          Afronden
-        </button>
-      </div>
     </form>
+
+    <OpdrachtActieKnoppen deleteAction={deleteOpdracht} />
+    </>
   );
 }

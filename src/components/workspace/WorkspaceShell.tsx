@@ -21,7 +21,7 @@ function statusTone(status: string) {
     case "in behandeling":
       return "border-amber-200 bg-amber-50 text-amber-700";
     default:
-      return "border-slate-200 bg-slate-100 text-slate-600";
+      return "border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300";
   }
 }
 
@@ -41,32 +41,32 @@ export default function WorkspaceShell({
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <div className="min-h-screen bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-700 dark:bg-slate-900/90">
         <div className="mx-auto flex max-w-[1680px] flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-slate-400">
               Eigen Huis inspectie
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-              <h1 className="text-xl font-semibold text-slate-950">
+              <h1 className="text-xl font-semibold text-slate-950 dark:text-white">
                 Opdracht #{opdrachtId}
               </h1>
               <span className={`inline-flex w-fit rounded-full border px-3 py-1 text-xs font-medium ${statusTone(status)}`}>
                 {status}
               </span>
             </div>
-            <p className="text-sm text-slate-500">{title} · {address}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{title} · {address}</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             <Link
               href="/"
-              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-blue-200 hover:text-blue-700"
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-blue-200 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-400"
             >
               Home
             </Link>
-            <div className="hidden lg:flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">
+            <div className="hidden lg:flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
               Werkruimte actief
             </div>
           </div>
@@ -75,9 +75,9 @@ export default function WorkspaceShell({
 
       <div className="mx-auto grid max-w-[1680px] gap-6 px-4 py-6 lg:grid-cols-[290px_minmax(0,1fr)] lg:px-6">
         <aside className="space-y-4 lg:sticky lg:top-28 lg:self-start">
-          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-900">Navigatie</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Navigatie</p>
               <span className="text-xs uppercase tracking-[0.3em] text-slate-400">
                 Tabs
               </span>
@@ -86,12 +86,11 @@ export default function WorkspaceShell({
               {navigationItems.map((item) => {
                 const href = `/opdracht/${opdrachtId}/${item.href}`;
                 const active = pathname === href;
-
                 return (
                   <Link
                     key={item.href}
                     href={href}
-                    className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${active ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "bg-slate-50 text-slate-600 hover:bg-slate-100"}`}
+                    className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${active ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-700/50 dark:text-slate-300 dark:hover:bg-slate-700"}`}
                   >
                     {item.label}
                   </Link>
@@ -102,12 +101,11 @@ export default function WorkspaceShell({
               {navigationItems.map((item) => {
                 const href = `/opdracht/${opdrachtId}/${item.href}`;
                 const active = pathname === href;
-
                 return (
                   <Link
                     key={item.href}
                     href={href}
-                    className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition ${active ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "bg-slate-50 text-slate-600 hover:bg-slate-100"}`}
+                    className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition ${active ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-700/50 dark:text-slate-300 dark:hover:bg-slate-700"}`}
                   >
                     <span>{item.label}</span>
                     <span className="text-xs uppercase tracking-[0.3em] opacity-70">
@@ -119,7 +117,7 @@ export default function WorkspaceShell({
             </nav>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
+          <div className="rounded-3xl border border-slate-200 bg-slate-950 p-5 text-white shadow-sm dark:border-slate-700">
             <p className="text-xs uppercase tracking-[0.35em] text-slate-400">
               Dossier
             </p>
