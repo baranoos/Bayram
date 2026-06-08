@@ -28,7 +28,11 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
-    pathname.match(/\.(ico|png|jpg|jpeg|svg|webp|css|js)$/)
+    pathname === "/sw.js" ||
+    pathname === "/manifest.json" ||
+    pathname === "/offline.html" ||
+    pathname.startsWith("/icons/") ||
+    pathname.match(/\.(ico|png|jpg|jpeg|svg|webp|css|js|woff2?)$/)
   ) {
     return NextResponse.next();
   }

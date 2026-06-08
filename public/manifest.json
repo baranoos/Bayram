@@ -1,0 +1,45 @@
+{
+  "name": "Eigen Huis Inspectie",
+  "short_name": "Eigenhuis",
+  "description": "Professionele woninginspectie en opdrachtbegeleiding — ook offline bruikbaar",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "lang": "nl",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/pwa-64x64.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/maskable-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nieuwe opdracht",
+      "short_name": "Nieuw",
+      "description": "Maak een nieuwe inspectie opdracht aan",
+      "url": "/opdracht/nieuw",
+      "icons": [{ "src": "/icons/pwa-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

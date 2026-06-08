@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" rx="36" fill="#2563eb"/>
+  <!-- House body -->
+  <path d="M96 38 L158 94 L142 94 L142 154 L116 154 L116 116 L76 116 L76 154 L50 154 L50 94 L34 94 Z" fill="white"/>
+  <!-- Door cutout (blue, makes it negative space) -->
+  <rect x="76" y="116" width="40" height="38" fill="#2563eb"/>
+  <!-- Window left -->
+  <rect x="60" y="104" width="20" height="18" rx="4" fill="#93c5fd"/>
+  <!-- Window right -->
+  <rect x="112" y="104" width="20" height="18" rx="4" fill="#93c5fd"/>
+  <!-- Door knob -->
+  <circle cx="108" cy="136" r="3" fill="#93c5fd"/>
+</svg>

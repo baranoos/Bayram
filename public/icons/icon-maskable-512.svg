@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Full bleed background for maskable (safe zone is inner 80%) -->
+  <rect width="512" height="512" fill="#2563eb"/>
+  <!-- House centred within safe zone (approx 205x205 to 307x307) -->
+  <path d="M256 130 L386 242 L356 242 L356 382 L298 382 L298 294 L214 294 L214 382 L156 382 L156 242 L126 242 Z" fill="white"/>
+  <rect x="214" y="294" width="84" height="88" fill="#2563eb"/>
+  <rect x="166" y="260" width="46" height="40" rx="8" fill="#93c5fd"/>
+  <rect x="300" y="260" width="46" height="40" rx="8" fill="#93c5fd"/>
+  <circle cx="250" cy="340" r="6" fill="#93c5fd"/>
+</svg>

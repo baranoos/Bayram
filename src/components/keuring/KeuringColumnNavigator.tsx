@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePWA } from "@/components/pwa/PWAProvider";
 
 type Node = {
   id: number;
@@ -53,6 +54,7 @@ function GebrekFormPanel({
   formState,
   disabled,
   statusMessage,
+  isOnline,
   onChange,
   onSubmit,
   onCancel,
@@ -61,6 +63,7 @@ function GebrekFormPanel({
   formState: GebrekFormState;
   disabled: boolean;
   statusMessage: string | null;
+  isOnline: boolean;
   onChange: <K extends keyof GebrekFormState>(
     field: K,
     value: GebrekFormState[K]
@@ -81,6 +84,11 @@ function GebrekFormPanel({
             {activeNode.omschrijving}
           </p>
         </div>
+        {!isOnline && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-700">
+            Offline — gebrek wordt opgeslagen en later gesynchroniseerd
+          </p>
+        )}
         {statusMessage ? (
           <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-700">
             {statusMessage}
@@ -142,16 +150,22 @@ function GebrekFormPanel({
 
       <label className="mb-3 block text-xs font-medium text-slate-700">
         Foto upload
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(event) => {
-            const file = (event.target.files?.[0] ?? null) as File | null;
-            onChange("fotoFile", file);
-            onChange("fotoPad", file ? file.name : "");
-          }}
-          className="mt-1 block w-full rounded-2xl border border-dashed border-slate-300 bg-white px-2 py-2 text-xs text-slate-500 file:mr-3 file:rounded-full file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-white"
-        />
+        {!isOnline ? (
+          <p className="mt-1 rounded-xl border border-amber-200 bg-amber-50 px-2 py-2 text-xs text-amber-700">
+            Foto uploaden vereist internetverbinding.
+          </p>
+        ) : (
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(event) => {
+              const file = (event.target.files?.[0] ?? null) as File | null;
+              onChange("fotoFile", file);
+              onChange("fotoPad", file ? file.name : "");
+            }}
+            className="mt-1 block w-full rounded-2xl border border-dashed border-slate-300 bg-white px-2 py-2 text-xs text-slate-500 file:mr-3 file:rounded-full file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-white"
+          />
+        )}
         {formState.fotoPad ? (
           <p className="mt-1 text-[11px] text-slate-500">
             Geselecteerd: {formState.fotoPad}
@@ -161,8 +175,9 @@ function GebrekFormPanel({
 
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] text-slate-500">
-          De foto wordt als bestandsnaam opgeslagen totdat de uploadopslag is
-          gekoppeld.
+          {isOnline
+            ? "De foto wordt als bestandsnaam opgeslagen totdat de uploadopslag is gekoppeld."
+            : "Gebrek wordt opgeslagen in offline wachtrij."}
         </span>
 
         <div className="flex items-center gap-2">
@@ -191,7 +206,9 @@ function GebrekFormPanel({
           <div className="w-[min(360px,90%)] rounded-2xl bg-white p-4 shadow-lg">
             <h3 className="text-sm font-semibold">Weet je het zeker?</h3>
             <p className="mt-2 text-xs text-slate-600">
-              Deze actie slaat het gebrek definitief op in de database.
+              {isOnline
+                ? "Deze actie slaat het gebrek definitief op in de database."
+                : "Het gebrek wordt opgeslagen in de offline wachtrij en gesynchroniseerd zodra er verbinding is."}
             </p>
 
             <div className="mt-4 flex justify-end gap-2">
@@ -227,6 +244,8 @@ export default function KeuringColumnNavigator({
   initialNodes: Node[];
   opdrachtId?: number;
 }) {
+  const { isOnline, enqueue } = usePWA();
+
   const [columns, setColumns] = useState<Column[]>([
     { parentId: null, nodes: initialNodes },
   ]);
@@ -259,37 +278,54 @@ export default function KeuringColumnNavigator({
   }
 
   async function selectNode(node: Node, columnIndex: number) {
-    const response = await fetch(`/api/keuring-children?id=${node.id}`);
-    const children: Node[] = await response.json();
+    try {
+      const response = await fetch(`/api/keuring-children?id=${node.id}`);
+      if (!response.ok) throw new Error("Failed");
+      const children: Node[] = await response.json();
 
-    setSelectedIds((prev) => {
-      const next = prev.slice(0, columnIndex);
-      next[columnIndex] = node.id;
-      return next;
-    });
+      setSelectedIds((prev) => {
+        const next = prev.slice(0, columnIndex);
+        next[columnIndex] = node.id;
+        return next;
+      });
 
-    setColumns((prev) => {
-      const next = prev.slice(0, columnIndex + 1);
+      setColumns((prev) => {
+        const next = prev.slice(0, columnIndex + 1);
 
-      if (children.length > 0) {
-        next.push({
-          parentId: node.id,
-          nodes: children,
-        });
+        if (children.length > 0) {
+          next.push({ parentId: node.id, nodes: children });
+          setShowForm(false);
+          setActiveNode(null);
+          setStatusMessage(null);
+          setErrorMessage(null);
+        } else {
+          setShowForm(true);
+          setActiveNode(node);
+          setStatusMessage(null);
+          setErrorMessage(null);
+        }
 
-        setShowForm(false);
-        setActiveNode(null);
-        setStatusMessage(null);
-        setErrorMessage(null);
-      } else {
+        return next;
+      });
+    } catch {
+      // Network failed (offline) but SW may serve from cache — if children
+      // were never cached, show the leaf form anyway so inspector can still register.
+      setSelectedIds((prev) => {
+        const next = prev.slice(0, columnIndex);
+        next[columnIndex] = node.id;
+        return next;
+      });
+      setColumns((prev) => prev.slice(0, columnIndex + 1));
+
+      if (!node.hasChildren) {
         setShowForm(true);
         setActiveNode(node);
         setStatusMessage(null);
         setErrorMessage(null);
+      } else {
+        setErrorMessage("Subkategorieën niet beschikbaar offline. Navigeer eerst online door de boom.");
       }
-
-      return next;
-    });
+    }
   }
 
   async function addGebrek() {
@@ -315,6 +351,43 @@ export default function KeuringColumnNavigator({
           ) ?? null
         : null;
 
+    const payload = {
+      keuringNodeId: activeNode.id,
+      aantal: formState.aantal,
+      ernstig: formState.ernstig,
+      standaardtekst: formState.standaardtekst,
+      opmerking: formState.opmerkingen,
+      locatie: parentNode?.omschrijving ?? activeNode.omschrijving,
+      categorie: activeNode.omschrijving,
+      titel: activeNode.omschrijving,
+      omschrijving: formState.opmerkingen,
+      ernst: formState.ernstig ? "Ernstig" : "Normaal",
+      fotoPad: "",
+    };
+
+    // ── Offline path ──────────────────────────────────────────────────────────
+    if (!isOnline) {
+      try {
+        await enqueue({
+          url:         `/api/opdrachten/${opdrachtId}/gebreken`,
+          method:      "POST",
+          body:        JSON.stringify(payload),
+          type:        "gebrek",
+          description: `Gebrek: ${activeNode.omschrijving} (opdracht #${opdrachtId})`,
+          opdrachtId,
+        });
+        setStatusMessage("Gebrek opgeslagen (offline — wordt gesynchroniseerd als verbinding terugkomt).");
+        setErrorMessage(null);
+        resetFormForNextEntry();
+      } catch {
+        setErrorMessage("Opslaan in offline wachtrij mislukt. Probeer opnieuw.");
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
+    // ── Online path ───────────────────────────────────────────────────────────
     try {
       let fotoPath = formState.fotoPad || "";
 
@@ -361,8 +434,7 @@ export default function KeuringColumnNavigator({
           const putRes = await fetch(uploadUrl, {
             method: "PUT",
             headers: {
-              "Content-Type":
-                formState.fotoFile.type || "application/octet-stream",
+              "Content-Type": formState.fotoFile.type || "application/octet-stream",
             },
             body: formState.fotoFile,
           });
@@ -372,38 +444,29 @@ export default function KeuringColumnNavigator({
             throw new Error(putText || "Upload naar R2 mislukt");
           }
 
-          fotoPath =
-            publicUrl ||
-            (presignJson.key ? `/r2/${presignJson.key}` : fotoPath);
+          fotoPath = publicUrl || (presignJson.key ? `/r2/${presignJson.key}` : fotoPath);
         }
       }
 
       const response = await fetch(`/api/opdrachten/${opdrachtId}/gebreken`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          keuringNodeId: activeNode.id,
-          aantal: formState.aantal,
-          ernstig: formState.ernstig,
-          standaardtekst: formState.standaardtekst,
-          opmerking: formState.opmerkingen,
-          locatie: parentNode?.omschrijving ?? activeNode.omschrijving,
-          categorie: activeNode.omschrijving,
-          titel: activeNode.omschrijving,
-          omschrijving: formState.opmerkingen,
-          ernst: formState.ernstig ? "Ernstig" : "Normaal",
-          fotoPad: fotoPath,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, fotoPad: fotoPath }),
       });
 
-      if (!response.ok) {
+      // 202 = queued by service worker (network dropped mid-request)
+      const isQueued = response.headers.get("X-Offline-Queue") === "true";
+
+      if (!response.ok && response.status !== 202) {
         const responseText = await response.text();
         throw new Error(responseText || "Opslaan van gebrek mislukt");
       }
 
-      setStatusMessage("Gebrek is opgeslagen.");
+      setStatusMessage(
+        isQueued
+          ? "Gebrek opgeslagen (offline — wordt gesynchroniseerd)."
+          : "Gebrek is opgeslagen."
+      );
       setErrorMessage(null);
       resetFormForNextEntry();
     } catch (err) {
@@ -432,6 +495,11 @@ export default function KeuringColumnNavigator({
         </span>
 
         <div className="flex items-center gap-2">
+          {!isOnline && (
+            <span className="hidden rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 sm:inline">
+              Offline
+            </span>
+          )}
           <span className="hidden sm:inline">
             {opdrachtId ? `Opdracht #${opdrachtId}` : "Zonder opdrachtkoppeling"}
           </span>
@@ -508,6 +576,7 @@ export default function KeuringColumnNavigator({
               formState={formState}
               disabled={isSaving}
               statusMessage={statusMessage}
+              isOnline={isOnline}
               onChange={(field, value) => {
                 setFormState((previous) => ({
                   ...previous,

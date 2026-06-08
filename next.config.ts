@@ -13,6 +13,40 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: projectRoot,
   },
+
+  async headers() {
+    return [
+      {
+        // Service worker must be served with no-cache and broad scope
+        source: "/sw.js",
+        headers: [
+          { key: "Service-Worker-Allowed", value: "/" },
+          { key: "Cache-Control",          value: "no-cache, no-store, must-revalidate" },
+          { key: "Pragma",                 value: "no-cache" },
+        ],
+      },
+      {
+        source: "/manifest.json",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" },
+          { key: "Content-Type",  value: "application/manifest+json" },
+        ],
+      },
+      {
+        source: "/offline.html",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=86400" },
+        ],
+      },
+      {
+        // SVG icons — long-lived, content doesn't change often
+        source: "/icons/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=604800, immutable" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
