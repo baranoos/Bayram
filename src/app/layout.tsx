@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/auth/AppHeader";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { PWAProvider } from "@/components/pwa/PWAProvider";
 import { OfflineBanner } from "@/components/pwa/OfflineBanner";
+import { UpdateBanner } from "@/components/pwa/UpdateBanner";
 import "./globals.css";
 
 const inter = Inter({
@@ -60,6 +61,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full text-slate-900 dark:text-slate-100">
         <PWAProvider>
+          <UpdateBanner />
           <ThemeProvider>
             <AppHeader />
             {children}

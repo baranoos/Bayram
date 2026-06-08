@@ -235,20 +235,9 @@ async function processSyncQueue() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CACHE STRATEGY HELPERS
+// SAFE OFFLINE FALLBACK
+// Returns a response that is always valid — never throws.
 // ─────────────────────────────────────────────────────────────────────────────
-
-async function cacheFirst(request, cacheName) {
-  const cache  = await caches.open(cacheName);
-  const cached = await cache.match(request);
-  if (cached) return cached;
-
-  const response = await fetch(request);
-  if (response.ok) {
-    cache.put(request, response.clone()).catch(() => {});
-  }
-  return response;
-}
 
 async function offlineFallback(isAPI) {
   if (isAPI) {
@@ -257,38 +246,76 @@ async function offlineFallback(isAPI) {
       { status: 503, headers: { 'Content-Type': 'application/json' } }
     );
   }
-  const offlineCache = await caches.open(STATIC_CACHE);
-  const offlinePage  = await offlineCache.match('/offline.html');
-  return (
-    offlinePage ||
-    new Response('<h1>Offline</h1>', { status: 503, headers: { 'Content-Type': 'text/html' } })
+  // Try to serve the pre-cached offline.html
+  try {
+    const offlineCache = await caches.open(STATIC_CACHE);
+    const offlinePage  = await offlineCache.match('/offline.html');
+    if (offlinePage) return offlinePage;
+  } catch {
+    // Cache API unavailable — fall through to inline HTML
+  }
+  return new Response(
+    '<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Offline</title></head><body style="font-family:sans-serif;text-align:center;padding:3rem"><h1>Geen verbinding</h1><p>Controleer uw internetverbinding en probeer het opnieuw.</p><button onclick="location.reload()">Opnieuw proberen</button></body></html>',
+    { status: 503, headers: { 'Content-Type': 'text/html' } }
   );
 }
 
-async function networkFirst(request, cacheName, timeoutMs, isAPI = false) {
-  const cache = await caches.open(cacheName);
+// ─────────────────────────────────────────────────────────────────────────────
+// CACHE STRATEGY HELPERS
+// All helpers are wrapped in outer try-catch so event.respondWith() NEVER
+// receives a rejected Promise, which would trigger the browser's default
+// "no internet connection" error page.
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const networkPromise = fetch(request.clone()).then((response) => {
-    if (response.ok) cache.put(request, response.clone()).catch(() => {});
-    return response;
-  });
-
+async function cacheFirst(request, cacheName) {
   try {
-    if (!timeoutMs) return await networkPromise;
+    const cache  = await caches.open(cacheName);
+    const cached = await cache.match(request);
+    if (cached) return cached;
 
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), timeoutMs)
-    );
-    return await Promise.race([networkPromise, timeoutPromise]);
+    const response = await fetch(request);
+    if (response.ok) {
+      cache.put(request, response.clone()).catch(() => {});
+    }
+    return response;
   } catch {
-    // Exact match
-    let cached = await cache.match(request);
-    if (cached) return cached;
+    // Static/immutable asset unavailable — return a minimal error response so
+    // the browser can continue rendering without triggering the offline page.
+    return new Response(null, { status: 503 });
+  }
+}
 
-    // Ignore Vary — catches RSC request vs HTML-cached response mismatch
-    cached = await cache.match(request, { ignoreVary: true });
-    if (cached) return cached;
+async function networkFirst(request, cacheName, timeoutMs, isAPI = false) {
+  try {
+    const cache = await caches.open(cacheName);
 
+    const networkPromise = fetch(request.clone()).then((response) => {
+      if (response.ok) cache.put(request, response.clone()).catch(() => {});
+      return response;
+    });
+
+    try {
+      if (!timeoutMs) return await networkPromise;
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), timeoutMs)
+      );
+      return await Promise.race([networkPromise, timeoutPromise]);
+    } catch {
+      // Network failed or timed out — look in cache
+
+      // Exact match
+      let cached = await cache.match(request);
+      if (cached) return cached;
+
+      // Ignore Vary — catches RSC request vs HTML-cached response mismatch
+      cached = await cache.match(request, { ignoreVary: true });
+      if (cached) return cached;
+
+      return offlineFallback(isAPI);
+    }
+  } catch {
+    // Cache API itself unavailable (private mode, quota exceeded, etc.)
     return offlineFallback(isAPI);
   }
 }
@@ -299,30 +326,35 @@ async function networkFirstNavigation(request) {
   // can always be found by the same stable URL.
   const bareUrl = self.location.origin + new URL(request.url).pathname;
 
-  const cache = await caches.open(PAGES_CACHE);
-
   try {
-    const response = await fetch(request);
-    if (response.ok) {
-      // Store under the original request AND under the bare pathname so that
-      // offline lookups with a different ?_rsc= hash still find this page.
-      cache.put(request, response.clone()).catch(() => {});
-      cache.put(bareUrl, response.clone()).catch(() => {});
+    const cache = await caches.open(PAGES_CACHE);
+
+    try {
+      const response = await fetch(request);
+      if (response.ok) {
+        // Store under the original request AND under the bare pathname so that
+        // offline lookups with a different ?_rsc= hash still find this page.
+        cache.put(request, response.clone()).catch(() => {});
+        cache.put(bareUrl, response.clone()).catch(() => {});
+      }
+      return response;
+    } catch {
+      // 1. Exact match
+      let cached = await cache.match(request);
+      if (cached) return cached;
+
+      // 2. Ignore Vary — catches header mismatches (RSC vs full-page request)
+      cached = await cache.match(request, { ignoreVary: true });
+      if (cached) return cached;
+
+      // 3. Bare absolute pathname — strips ?_rsc=<hash> and other query params
+      cached = await cache.match(bareUrl, { ignoreVary: true });
+      if (cached) return cached;
+
+      return offlineFallback(false);
     }
-    return response;
   } catch {
-    // 1. Exact match
-    let cached = await cache.match(request);
-    if (cached) return cached;
-
-    // 2. Ignore Vary — catches header mismatches (RSC vs full-page request)
-    cached = await cache.match(request, { ignoreVary: true });
-    if (cached) return cached;
-
-    // 3. Bare absolute pathname — strips ?_rsc=<hash> and other query params
-    cached = await cache.match(bareUrl, { ignoreVary: true });
-    if (cached) return cached;
-
+    // Cache API unavailable — serve inline offline page
     return offlineFallback(false);
   }
 }
@@ -346,22 +378,34 @@ async function handleQueueableMutation(request) {
     const headers = {};
     request.headers.forEach((value, key) => { headers[key] = value; });
 
-    const item = await queueRequest(request.url, request.method, headers, body);
+    try {
+      const item = await queueRequest(request.url, request.method, headers, body);
 
-    return new Response(
-      JSON.stringify({
-        queued:  true,
-        id:      item.id,
-        message: 'Opgeslagen voor synchronisatie zodra verbinding terugkomt',
-      }),
-      {
-        status: 202,
-        headers: {
-          'Content-Type':    'application/json',
-          'X-Offline-Queue': 'true',
-        },
-      }
-    );
+      return new Response(
+        JSON.stringify({
+          queued:  true,
+          id:      item.id,
+          message: 'Opgeslagen voor synchronisatie zodra verbinding terugkomt',
+        }),
+        {
+          status: 202,
+          headers: {
+            'Content-Type':    'application/json',
+            'X-Offline-Queue': 'true',
+          },
+        }
+      );
+    } catch {
+      // IDB unavailable — cannot queue; return 503 so the caller knows the
+      // request failed and can show a user-visible error message.
+      return new Response(
+        JSON.stringify({
+          error:   'offline',
+          message: 'Geen verbinding en lokaal opslaan mislukt. Probeer opnieuw als u online bent.',
+        }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
   }
 }
 
@@ -542,42 +586,46 @@ self.addEventListener('message', (event) => {
 
       event.waitUntil(
         (async () => {
-          const [pageCache, apiCache] = await Promise.all([
-            caches.open(PAGES_CACHE),
-            caches.open(API_CACHE),
-          ]);
+          try {
+            const [pageCache, apiCache] = await Promise.all([
+              caches.open(PAGES_CACHE),
+              caches.open(API_CACHE),
+            ]);
 
-          // Concurrency-limited fetch helper — avoids flooding the server
-          async function fetchAndCache(urls, cache) {
-            const BATCH = 4;
-            for (let i = 0; i < urls.length; i += BATCH) {
-              const batch = urls.slice(i, i + BATCH);
-              await Promise.all(
-                batch.map(async (url) => {
-                  try {
-                    // Skip if already cached (avoid redundant round-trips)
-                    const existing = await cache.match(url);
-                    if (existing) return;
+            // Concurrency-limited fetch helper — avoids flooding the server
+            async function fetchAndCache(urls, cache) {
+              const BATCH = 4;
+              for (let i = 0; i < urls.length; i += BATCH) {
+                const batch = urls.slice(i, i + BATCH);
+                await Promise.all(
+                  batch.map(async (url) => {
+                    try {
+                      // Skip if already cached (avoid redundant round-trips)
+                      const existing = await cache.match(url);
+                      if (existing) return;
 
-                    const response = await fetch(url, { credentials: 'include' });
-                    if (response.ok) {
-                      await cache.put(url, response);
+                      const response = await fetch(url, { credentials: 'include' });
+                      if (response.ok) {
+                        await cache.put(url, response);
+                      }
+                    } catch {
+                      // Network failure — page will be fetched on demand later
                     }
-                  } catch {
-                    // Network failure — page will be fetched on demand later
-                  }
-                })
-              );
+                  })
+                );
+              }
             }
+
+            await Promise.all([
+              fetchAndCache(pageUrls, pageCache),
+              fetchAndCache(apiUrls,  apiCache),
+            ]);
+          } catch {
+            // Cache API unavailable — precaching silently skipped
           }
 
-          await Promise.all([
-            fetchAndCache(pageUrls, pageCache),
-            fetchAndCache(apiUrls,  apiCache),
-          ]);
-
-          // Notify clients that precaching finished
-          const clients = await self.clients.matchAll({ includeUncontrolled: true });
+          // Notify clients that precaching finished (sent even on partial failure)
+          const clients = await self.clients.matchAll({ includeUncontrolled: true }).catch(() => []);
           for (const client of clients) {
             client.postMessage({ type: 'PRECACHE_COMPLETE', count: pageUrls.length + apiUrls.length });
           }
@@ -596,25 +644,29 @@ self.addEventListener('message', (event) => {
 
       event.waitUntil(
         (async () => {
-          const cache = await caches.open(API_CACHE);
+          try {
+            const cache = await caches.open(API_CACHE);
 
-          await Promise.all(
-            Object.entries(tree).map(([parentId, children]) => {
-              const url      = `/api/keuring-children?id=${parentId}`;
-              const response = new Response(JSON.stringify(children), {
-                status:  200,
-                headers: { 'Content-Type': 'application/json', 'X-SW-Precached': 'keuring-tree' },
+            await Promise.all(
+              Object.entries(tree).map(([parentId, children]) => {
+                const url      = `/api/keuring-children?id=${parentId}`;
+                const response = new Response(JSON.stringify(children), {
+                  status:  200,
+                  headers: { 'Content-Type': 'application/json', 'X-SW-Precached': 'keuring-tree' },
+                });
+                return cache.put(url, response);
+              })
+            );
+
+            const clients = await self.clients.matchAll({ includeUncontrolled: true }).catch(() => []);
+            for (const client of clients) {
+              client.postMessage({
+                type:  'KEURING_TREE_CACHED',
+                count: Object.keys(tree).length,
               });
-              return cache.put(url, response);
-            })
-          );
-
-          const clients = await self.clients.matchAll({ includeUncontrolled: true });
-          for (const client of clients) {
-            client.postMessage({
-              type:  'KEURING_TREE_CACHED',
-              count: Object.keys(tree).length,
-            });
+            }
+          } catch {
+            // Cache API unavailable — keuring tree will be fetched on demand
           }
         })()
       );

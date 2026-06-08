@@ -40,6 +40,10 @@ interface PWAContextValue {
   isInstallable: boolean;
   /** Show the native "Add to Home Screen" prompt. */
   promptInstall: () => void;
+  /** True when a new service worker version has been installed and is waiting. */
+  updateAvailable: boolean;
+  /** Tell the waiting SW to activate, then reload the page. */
+  applyUpdate: () => void;
 }
 
 const PWAContext = createContext<PWAContextValue | null>(null);
@@ -66,9 +70,11 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
   const [lastSyncAt,      setLastSyncAt     ] = useState<Date | null>(null);
   const [lastSyncResult,  setLastSyncResult ] = useState<Pick<SyncResult, "succeeded" | "failed"> | null>(null);
   const [isInstallable,   setIsInstallable  ] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
 
   const syncLock        = useRef(false);
   const deferredPrompt  = useRef<BeforeInstallPromptEvent | null>(null);
+  const waitingWorker   = useRef<ServiceWorker | null>(null);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -121,6 +127,17 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   }, []);
 
+  const applyUpdate = useCallback(() => {
+    const sw = waitingWorker.current;
+    if (sw) {
+      sw.postMessage({ type: "SKIP_WAITING" });
+    }
+    // Reload once the new SW has taken control
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      window.location.reload();
+    }, { once: true });
+  }, []);
+
   // ── Service worker registration ────────────────────────────────────────────
 
   useEffect(() => {
@@ -135,12 +152,20 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
           if (!nextWorker) return;
           nextWorker.addEventListener("statechange", () => {
             if (nextWorker.state === "installed" && navigator.serviceWorker.controller) {
-              // A new version is ready — dispatch event for optional update UI
+              waitingWorker.current = nextWorker;
+              setUpdateAvailable(true);
               window.dispatchEvent(new CustomEvent("pwa-update-available"));
             }
           });
         };
         reg.addEventListener("updatefound", onUpdateFound);
+
+        // Catch the case where a SW is already waiting (e.g. page reloaded
+        // while an update was pending)
+        if (reg.waiting && navigator.serviceWorker.controller) {
+          waitingWorker.current = reg.waiting;
+          setUpdateAvailable(true);
+        }
       })
       .catch((err) => {
         // SW registration failure is non-fatal; app still works online
@@ -238,6 +263,8 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
         triggerSync,
         isInstallable,
         promptInstall,
+        updateAvailable,
+        applyUpdate,
       }}
     >
       {children}

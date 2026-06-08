@@ -11,9 +11,10 @@
  *    so the full tree is navigable offline without any extra network calls.
  */
 
-// Keep in sync with SW_VERSION in public/sw.js — change forces a re-warm
+// Keep in sync with SW_VERSION in public/sw.js — change forces a re-warm.
+// sessionStorage (not localStorage) so the warm runs once per browser session:
+// new tabs and reopened browsers always catch freshly-added opdrachten.
 const SESSION_KEY        = "pwa-cache-warmed-v5";
-// Independent version for the keuring tree data
 const KEURING_SESSION_KEY = "pwa-keuring-tree-v2";
 
 const STATIC_PAGES = ["/", "/settings", "/opdracht/nieuw"];
@@ -34,7 +35,7 @@ export async function warmCacheForCurrentUser(): Promise<void> {
   if (!navigator.onLine) return;
   if (!("serviceWorker" in navigator)) return;
 
-  if (localStorage.getItem(SESSION_KEY) === "1") return;
+  if (sessionStorage.getItem(SESSION_KEY) === "1") return;
 
   try {
     const reg = await navigator.serviceWorker.ready;
@@ -60,7 +61,9 @@ export async function warmCacheForCurrentUser(): Promise<void> {
     ];
 
     reg.active.postMessage({ type: "PRECACHE_PAGES", pageUrls, apiUrls });
-    localStorage.setItem(SESSION_KEY, "1");
+    // Set after posting so within this session we don't re-warm on every
+    // navigation. The SW's "skip if cached" deduplication keeps it cheap.
+    sessionStorage.setItem(SESSION_KEY, "1");
   } catch {
     // Non-critical
   }
@@ -76,7 +79,7 @@ export async function warmKeuringTree(): Promise<void> {
   if (!navigator.onLine) return;
   if (!("serviceWorker" in navigator)) return;
 
-  if (localStorage.getItem(KEURING_SESSION_KEY) === "1") return;
+  if (sessionStorage.getItem(KEURING_SESSION_KEY) === "1") return;
 
   try {
     const reg = await navigator.serviceWorker.ready;
@@ -90,7 +93,7 @@ export async function warmKeuringTree(): Promise<void> {
     };
 
     reg.active.postMessage({ type: "PRECACHE_KEURING_TREE", tree });
-    localStorage.setItem(KEURING_SESSION_KEY, "1");
+    sessionStorage.setItem(KEURING_SESSION_KEY, "1");
   } catch {
     // Non-critical
   }
