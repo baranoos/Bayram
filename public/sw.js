@@ -3,7 +3,7 @@
  * Offline-first PWA: caching + sync queue + background sync
  */
 
-const SW_VERSION = 'v3';
+const SW_VERSION = 'v4';
 const STATIC_CACHE  = `eigenhuis-static-${SW_VERSION}`;
 const PAGES_CACHE   = `eigenhuis-pages-${SW_VERSION}`;
 const API_CACHE     = `eigenhuis-api-${SW_VERSION}`;
@@ -250,28 +250,46 @@ async function cacheFirst(request, cacheName) {
   return response;
 }
 
-async function networkFirst(request, cacheName, timeoutMs) {
+async function offlineFallback(isAPI) {
+  if (isAPI) {
+    return new Response(
+      JSON.stringify({ error: 'offline', message: 'Geen internetverbinding' }),
+      { status: 503, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+  const offlineCache = await caches.open(STATIC_CACHE);
+  const offlinePage  = await offlineCache.match('/offline.html');
+  return (
+    offlinePage ||
+    new Response('<h1>Offline</h1>', { status: 503, headers: { 'Content-Type': 'text/html' } })
+  );
+}
+
+async function networkFirst(request, cacheName, timeoutMs, isAPI = false) {
   const cache = await caches.open(cacheName);
 
   const networkPromise = fetch(request.clone()).then((response) => {
-    if (response.ok) {
-      cache.put(request, response.clone()).catch(() => {});
-    }
+    if (response.ok) cache.put(request, response.clone()).catch(() => {});
     return response;
   });
 
-  if (!timeoutMs) return networkPromise;
-
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('timeout')), timeoutMs)
-  );
-
   try {
+    if (!timeoutMs) return await networkPromise;
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), timeoutMs)
+    );
     return await Promise.race([networkPromise, timeoutPromise]);
   } catch {
-    const cached = await cache.match(request);
+    // Exact match
+    let cached = await cache.match(request);
     if (cached) return cached;
-    throw new Error('Offline and no cache');
+
+    // Ignore Vary — catches RSC request vs HTML-cached response mismatch
+    cached = await cache.match(request, { ignoreVary: true });
+    if (cached) return cached;
+
+    return offlineFallback(isAPI);
   }
 }
 
@@ -284,21 +302,22 @@ async function networkFirstNavigation(request) {
     }
     return response;
   } catch {
-    // Try cache first
-    const cache  = await caches.open(PAGES_CACHE);
-    const cached = await cache.match(request);
+    const cache = await caches.open(PAGES_CACHE);
+
+    // Exact match
+    let cached = await cache.match(request);
     if (cached) return cached;
 
-    // Fallback to offline page
-    const offlineCache  = await caches.open(STATIC_CACHE);
-    const offlinePage   = await offlineCache.match('/offline.html');
-    if (offlinePage) return offlinePage;
+    // Ignore Vary — finds HTML page cached by precache even when RSC headers present
+    cached = await cache.match(request, { ignoreVary: true });
+    if (cached) return cached;
 
-    // Last resort
-    return new Response('<h1>Offline</h1>', {
-      status: 503,
-      headers: { 'Content-Type': 'text/html' },
-    });
+    // Try clean pathname (strips query params like ?_rsc=...)
+    const cleanReq = new Request(new URL(request.url).pathname);
+    cached = await cache.match(cleanReq, { ignoreVary: true });
+    if (cached) return cached;
+
+    return offlineFallback(false);
   }
 }
 
@@ -399,7 +418,14 @@ self.addEventListener('fetch', (event) => {
 
   // ── 3. Network-only (auth, uploads, binary generation) ────────────────────
   if (NETWORK_ONLY_PATTERNS.some((p) => p.test(pathname))) {
-    event.respondWith(fetch(request));
+    event.respondWith(
+      fetch(request).catch(() =>
+        new Response(JSON.stringify({ error: 'offline' }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+    );
     return;
   }
 
@@ -409,8 +435,15 @@ self.addEventListener('fetch', (event) => {
       event.respondWith(handleQueueableMutation(request));
       return;
     }
-    // Other mutations: network only (no queue)
-    event.respondWith(fetch(request));
+    // Other mutations: try network, return 503 JSON if offline
+    event.respondWith(
+      fetch(request).catch(() =>
+        new Response(
+          JSON.stringify({ error: 'offline', message: 'Geen verbinding. Probeer opnieuw als je online bent.' }),
+          { status: 503, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+    );
     return;
   }
 
@@ -420,22 +453,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ── 6. GET API requests — network-first with IDB-independent cache ─────────
+  // ── 6. GET API requests — network-first with cache fallback ───────────────
   if (pathname.startsWith('/api/')) {
-    // Keuring tree is essentially static; use a longer cache window
-    const ttl = /\/api\/keuring-children/.test(pathname) ? 0 : 5000;
-    event.respondWith(networkFirst(request, API_CACHE, ttl || 5000));
+    event.respondWith(networkFirst(request, API_CACHE, 5000, true));
     return;
   }
 
-  // ── 7. Page navigations (HTML) ────────────────────────────────────────────
-  if (request.mode === 'navigate') {
+  // ── 7. Page navigations (HTML) + Next.js App Router RSC client navigation ──
+  // Next.js App Router soft-navigation sends RSC: 1 or Next-Router-State-Tree
+  // headers. These are same-origin fetches (not mode:navigate) but still need
+  // the page-navigation cache strategy with ignoreVary so precached HTML can
+  // be served even when the request has Vary-triggering headers.
+  if (
+    request.mode === 'navigate' ||
+    request.headers.get('RSC') === '1' ||
+    request.headers.has('Next-Router-State-Tree')
+  ) {
     event.respondWith(networkFirstNavigation(request));
     return;
   }
 
   // ── 8. Everything else — network with page-cache fallback ─────────────────
-  event.respondWith(networkFirst(request, PAGES_CACHE, 8000));
+  event.respondWith(networkFirst(request, PAGES_CACHE, 5000));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
