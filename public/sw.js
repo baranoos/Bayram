@@ -400,6 +400,11 @@ async function handleQueueableMutation(request) {
     try {
       const item = await queueRequest(request.url, request.method, headers, body);
 
+      // Notify all open tabs so pendingCount updates immediately
+      self.clients.matchAll({ includeUncontrolled: true })
+        .then((clients) => clients.forEach((c) => c.postMessage({ type: 'QUEUE_ITEM_ADDED' })))
+        .catch(() => {});
+
       return new Response(
         JSON.stringify({
           queued:  true,

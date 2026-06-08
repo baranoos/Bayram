@@ -182,7 +182,10 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
         });
         refreshPendingCount();
       }
-      // PRECACHE_COMPLETE is informational — no UI action needed
+      if (event.data?.type === "QUEUE_ITEM_ADDED") {
+        refreshPendingCount();
+      }
+      // PRECACHE_COMPLETE / KEURING_TREE_CACHED are informational — no UI action needed
     };
 
     navigator.serviceWorker.addEventListener("message", onMessage);
