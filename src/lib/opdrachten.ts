@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
@@ -11,7 +12,7 @@ type DashboardOpdrachtRow = Prisma.OpdrachtGetPayload<{
     };
     resultaten: {
       include: {
-        gebreken: true;
+        _count: { select: { gebreken: true } };
       };
     };
   };
@@ -67,7 +68,7 @@ export async function getDashboardOpdrachten(): Promise<{
         },
         resultaten: {
           include: {
-            gebreken: true,
+            _count: { select: { gebreken: true } },
           },
           orderBy: {
             createdAt: "desc",
@@ -83,7 +84,7 @@ export async function getDashboardOpdrachten(): Promise<{
   return {
     opdrachten: opdrachten.map((opdracht) => {
     const gebrekCount = opdracht.resultaten.reduce(
-      (total, resultaat) => total + resultaat.gebreken.length,
+      (total, resultaat) => total + resultaat._count.gebreken,
       0
     );
 
@@ -119,7 +120,7 @@ export async function getDashboardOpdrachten(): Promise<{
   };
 }
 
-export async function getWorkspaceOpdracht(opdrachtId: number) {
+export const getWorkspaceOpdracht = cache(async function getWorkspaceOpdracht(opdrachtId: number) {
   const opdracht = await prisma.opdracht.findUnique({
     where: { id: opdrachtId },
     include: {
@@ -151,39 +152,16 @@ export async function getWorkspaceOpdracht(opdrachtId: number) {
 
   // If the dossier is freshly created ('nieuw'), mark it as 'in behandeling' when opened.
   if (opdracht.status === "nieuw") {
-    const updated = await prisma.opdracht.update({
+    await prisma.opdracht.update({
       where: { id: opdrachtId },
       data: { status: "in behandeling" },
-      include: {
-        woning: {
-          include: {
-            omstandigheidItems: {
-              orderBy: { sortOrder: "asc" },
-            },
-          },
-        },
-        meterstanden: true,
-        rapporten: {
-          orderBy: { createdAt: "desc" },
-        },
-        opmerkingen: {
-          orderBy: { createdAt: "desc" },
-        },
-        resultaten: {
-          include: {
-            gebreken: true,
-            fotos: true,
-          },
-          orderBy: { createdAt: "desc" },
-        },
-      },
+      select: { id: true },
     });
-
-    return updated;
+    return { ...opdracht, status: "in behandeling" };
   }
 
   return opdracht;
-}
+});
 
 export function getStatusLabel(status: string) {
   switch (status) {

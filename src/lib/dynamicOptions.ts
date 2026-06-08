@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 
 export type OptionGroup =
@@ -25,7 +26,7 @@ const allGroups: OptionGroup[] = [
   "rapportType",
 ];
 
-export async function getWorkspaceOptions(): Promise<WorkspaceOptions> {
+export const getWorkspaceOptions = cache(async function getWorkspaceOptions(): Promise<WorkspaceOptions> {
   const rows = await prisma.dynamicOption.findMany({
     where: {
       group: { in: allGroups },
@@ -53,4 +54,4 @@ export async function getWorkspaceOptions(): Promise<WorkspaceOptions> {
   }
 
   return grouped;
-}
+});

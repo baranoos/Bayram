@@ -11,8 +11,10 @@ export default async function RapportenPage({
 }) {
   const { id } = await params;
   const opdrachtId = Number(id);
-  const opdracht = await getWorkspaceOpdracht(opdrachtId);
-  const options = await getWorkspaceOptions();
+  const [opdracht, options] = await Promise.all([
+    getWorkspaceOpdracht(opdrachtId),
+    getWorkspaceOptions(),
+  ]);
 
   if (!opdracht) notFound();
 

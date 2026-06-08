@@ -279,6 +279,7 @@ export default function KeuringColumnNavigator({
 
   async function selectNode(node: Node, columnIndex: number) {
     const applyResult = (children: Node[]) => {
+      const hasChildren = children.length > 0;
       setSelectedIds((prev) => {
         const next = prev.slice(0, columnIndex);
         next[columnIndex] = node.id;
@@ -286,18 +287,13 @@ export default function KeuringColumnNavigator({
       });
       setColumns((prev) => {
         const next = prev.slice(0, columnIndex + 1);
-        if (children.length > 0) {
-          next.push({ parentId: node.id, nodes: children });
-          setShowForm(false);
-          setActiveNode(null);
-        } else {
-          setShowForm(true);
-          setActiveNode(node);
-        }
-        setStatusMessage(null);
-        setErrorMessage(null);
+        if (hasChildren) next.push({ parentId: node.id, nodes: children });
         return next;
       });
+      setShowForm(!hasChildren);
+      setActiveNode(hasChildren ? null : node);
+      setStatusMessage(null);
+      setErrorMessage(null);
     };
 
     try {

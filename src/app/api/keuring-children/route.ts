@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 86400; // keuring tree nodes are structural — revalidate once per day
 
 const cache = new Map<
   number,
