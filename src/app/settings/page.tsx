@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTheme, type Theme, type FontSize } from "@/components/ThemeProvider";
+import { usePWA } from "@/components/pwa/PWAProvider";
 
 function ThemeCard({
   value,
@@ -155,6 +156,7 @@ function SizeButton({
 
 export default function SettingsPage() {
   const { theme, fontSize, setTheme, setFontSize } = useTheme();
+  const { isOnline } = usePWA();
   const [me, setMe] = useState<{ id: number; email: string | null; role: string } | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -163,10 +165,26 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Load from localStorage first so the page renders offline
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem("eh-user");
+      if (s) setMe(JSON.parse(s));
+    } catch {}
+  }, []);
+
+  // Refresh from network when online
   useEffect(() => {
     fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d) => setMe(d.user || null));
+      .then(async (r) => {
+        if (!r.ok) return;
+        const d = await r.json();
+        if (d?.user) {
+          setMe(d.user);
+          try { localStorage.setItem("eh-user", JSON.stringify(d.user)); } catch {}
+        }
+      })
+      .catch(() => {});
   }, []);
 
   async function changePassword(e: React.FormEvent) {
@@ -202,17 +220,13 @@ export default function SettingsPage() {
     }
   }
 
-  if (!me) {
-    return <div className="p-6 text-sm text-slate-500">Laden…</div>;
-  }
-
   return (
     <main className="mx-auto max-w-lg space-y-4 px-4 py-8">
 
       {/* Comfort */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h1 className="text-2xl font-semibold text-slate-950 dark:text-white">Instellingen</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{me.email ?? "Account"}</p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{me?.email ?? "Account"}</p>
 
         {/* Theme cards */}
         <h2 className="mt-8 text-base font-semibold text-slate-900 dark:text-slate-100">Weergave</h2>
@@ -252,7 +266,12 @@ export default function SettingsPage() {
       {/* Wachtwoord */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Wachtwoord wijzigen</h2>
-        <form onSubmit={changePassword} className="mt-4 space-y-4">
+        {!isOnline && (
+          <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+            Wachtwoord wijzigen vereist een internetverbinding.
+          </p>
+        )}
+        <form onSubmit={changePassword} className={`mt-4 space-y-4 ${!isOnline ? "pointer-events-none opacity-50" : ""}`}>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
             Huidig wachtwoord
             <input

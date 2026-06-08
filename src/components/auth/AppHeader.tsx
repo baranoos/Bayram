@@ -7,13 +7,23 @@ import { usePWA } from "@/components/pwa/PWAProvider";
 
 type Me = { id: number; email: string | null; role: string } | null;
 
+const ME_KEY = "eh-user";
+
+function loadCachedMe(): Me {
+  try {
+    const s = localStorage.getItem(ME_KEY);
+    return s ? JSON.parse(s) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function AppHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const [me, setMe] = useState<Me>(null);
   const { isOnline, isSyncing, pendingCount, triggerSync, lastSyncAt, lastSyncResult } = usePWA();
 
-  // Keep sync button visible with a ✓ state for 8 seconds after successful sync
   const [syncDone, setSyncDone] = useState(false);
   const prevSyncAt = useRef<Date | null>(null);
 
@@ -27,15 +37,30 @@ export function AppHeader() {
     return () => clearTimeout(t);
   }, [lastSyncAt, lastSyncResult]);
 
+  // Hydrate from localStorage immediately so nav stays visible offline
+  useEffect(() => {
+    setMe(loadCachedMe());
+  }, []);
+
+  // Fetch fresh user — only update state on a real 200 response
   useEffect(() => {
     if (pathname === "/login") return;
     fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d) => setMe(d.user ?? null));
+      .then(async (r) => {
+        if (!r.ok) return; // offline (503) or auth error — keep cached state
+        const d = await r.json();
+        if (d?.user) {
+          setMe(d.user);
+          try { localStorage.setItem(ME_KEY, JSON.stringify(d.user)); } catch {}
+        }
+      })
+      .catch(() => {}); // network error — keep cached state
   }, [pathname]);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
+    try { localStorage.removeItem(ME_KEY); } catch {}
+    setMe(null);
     router.push("/login");
     router.refresh();
   }
@@ -54,11 +79,11 @@ export function AppHeader() {
 
         <div className="flex items-center gap-3 text-sm">
 
-          {/* ── Offline indicator (all screen sizes) ──────────────────────────── */}
+          {/* ── Offline indicator ─────────────────────────────────────────────── */}
           {!isOnline && (
             <span className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500 dark:bg-amber-400" />
-              <span>Offline</span>
+              Offline
             </span>
           )}
 
@@ -83,7 +108,6 @@ export function AppHeader() {
                   : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-70 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
               }`}
             >
-              {/* Icon */}
               {isSyncing ? (
                 <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -98,13 +122,9 @@ export function AppHeader() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               )}
-
-              {/* Label */}
               <span className="hidden sm:inline">
                 {isSyncing ? "Synchroniseren…" : syncDone ? "Gesynchroniseerd" : "Synchroniseer"}
               </span>
-
-              {/* Pending count badge */}
               {!isSyncing && !syncDone && hasPending && (
                 <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white dark:bg-blue-400 dark:text-blue-950">
                   {pendingCount > 99 ? "99+" : pendingCount}
@@ -113,6 +133,7 @@ export function AppHeader() {
             </button>
           )}
 
+          {/* ── Nav links — always shown when user is known (cached or live) ──── */}
           {me ? (
             <>
               <span className="hidden text-slate-500 dark:text-slate-400 sm:inline">{me.email ?? "Gebruiker"}</span>

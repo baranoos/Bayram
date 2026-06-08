@@ -16,7 +16,7 @@ const SESSION_KEY        = "pwa-cache-warmed-v4";
 // Independent version for the keuring tree data
 const KEURING_SESSION_KEY = "pwa-keuring-tree-v1";
 
-const STATIC_PAGES = ["/", "/opdracht/nieuw"];
+const STATIC_PAGES = ["/", "/settings", "/opdracht/nieuw"];
 
 const OPDRACHT_PAGES = [
   "details",
