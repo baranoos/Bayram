@@ -19,7 +19,7 @@ export async function GET() {
       include: {
         child: {
           include: {
-            childRelations: { select: { id: true }, take: 1 },
+            parentRelations: { select: { id: true }, take: 1 },
           },
         },
       },
@@ -32,7 +32,7 @@ export async function GET() {
       tree[rel.parentId].push({
         id:          rel.child.id,
         omschrijving: rel.child.omschrijving,
-        hasChildren: rel.child.childRelations.length > 0,
+        hasChildren: rel.child.parentRelations.length > 0,
       });
     }
 

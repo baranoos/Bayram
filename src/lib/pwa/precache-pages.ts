@@ -15,7 +15,7 @@
 // sessionStorage (not localStorage) so the warm runs once per browser session:
 // new tabs and reopened browsers always catch freshly-added opdrachten.
 const SESSION_KEY        = "pwa-cache-warmed-v6";
-const KEURING_SESSION_KEY = "pwa-keuring-tree-v3";
+const KEURING_SESSION_KEY = "pwa-keuring-tree-v4";
 
 const STATIC_PAGES = ["/", "/settings", "/opdracht/nieuw"];
 
