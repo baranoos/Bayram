@@ -278,52 +278,61 @@ export default function KeuringColumnNavigator({
   }
 
   async function selectNode(node: Node, columnIndex: number) {
-    try {
-      const response = await fetch(`/api/keuring-children?id=${node.id}`);
-      if (!response.ok) throw new Error("Failed");
-      const children: Node[] = await response.json();
-
+    const applyResult = (children: Node[]) => {
       setSelectedIds((prev) => {
         const next = prev.slice(0, columnIndex);
         next[columnIndex] = node.id;
         return next;
       });
-
       setColumns((prev) => {
         const next = prev.slice(0, columnIndex + 1);
-
         if (children.length > 0) {
           next.push({ parentId: node.id, nodes: children });
           setShowForm(false);
           setActiveNode(null);
-          setStatusMessage(null);
-          setErrorMessage(null);
         } else {
           setShowForm(true);
           setActiveNode(node);
-          setStatusMessage(null);
-          setErrorMessage(null);
         }
-
+        setStatusMessage(null);
+        setErrorMessage(null);
         return next;
       });
-    } catch {
-      // Network failed (offline) but SW may serve from cache — if children
-      // were never cached, show the leaf form anyway so inspector can still register.
-      setSelectedIds((prev) => {
-        const next = prev.slice(0, columnIndex);
-        next[columnIndex] = node.id;
-        return next;
-      });
-      setColumns((prev) => prev.slice(0, columnIndex + 1));
+    };
 
+    try {
+      const response = await fetch(`/api/keuring-children?id=${node.id}`);
+      // 503 means SW is offline with no cached children for this node
+      if (response.status === 503) throw new Error("offline-no-cache");
+      if (!response.ok) throw new Error("server-error");
+      const children: Node[] = await response.json();
+      applyResult(children);
+    } catch (err) {
+      // If this node has no children it's a leaf — show the gebrek form regardless
       if (!node.hasChildren) {
+        setSelectedIds((prev) => {
+          const next = prev.slice(0, columnIndex);
+          next[columnIndex] = node.id;
+          return next;
+        });
+        setColumns((prev) => prev.slice(0, columnIndex + 1));
         setShowForm(true);
         setActiveNode(node);
         setStatusMessage(null);
         setErrorMessage(null);
       } else {
-        setErrorMessage("Subkategorieën niet beschikbaar offline. Navigeer eerst online door de boom.");
+        setSelectedIds((prev) => {
+          const next = prev.slice(0, columnIndex);
+          next[columnIndex] = node.id;
+          return next;
+        });
+        setColumns((prev) => prev.slice(0, columnIndex + 1));
+        const isOffline = err instanceof Error && err.message === "offline-no-cache";
+        setErrorMessage(
+          isOffline
+            ? "Subkategorieën niet beschikbaar offline — navigeer deze niveaus eerst online."
+            : "Kon subkategorieën niet laden. Probeer opnieuw."
+        );
       }
     }
   }
@@ -518,7 +527,7 @@ export default function KeuringColumnNavigator({
         className={
           isFullscreen
             ? "flex h-[calc(100dvh-76px)] min-h-0 w-full gap-3 overflow-hidden"
-            : "flex h-[calc(100dvh-180px)] min-h-[520px] w-full gap-3 overflow-hidden"
+            : "flex h-[calc(100dvh-180px)] min-h-130 w-full gap-3 overflow-hidden"
         }
       >
         <div className="flex h-full min-w-0 flex-1 gap-3 overflow-x-auto overflow-y-hidden pb-2">
@@ -527,8 +536,8 @@ export default function KeuringColumnNavigator({
               key={columnIndex}
               className={
                 isFullscreen
-                  ? "flex h-full min-w-[220px] max-w-[280px] flex-1 flex-col rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-sm"
-                  : "flex h-full min-w-[190px] max-w-[240px] flex-1 flex-col rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-sm"
+                  ? "flex h-full min-w-55 max-w-70 flex-1 flex-col rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-sm"
+                  : "flex h-full min-w-47.5 max-w-60 flex-1 flex-col rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-sm"
               }
             >
               <div className="flex-1 overflow-y-auto">
@@ -567,8 +576,8 @@ export default function KeuringColumnNavigator({
           <div
             className={
               isFullscreen
-                ? "h-full w-[360px] flex-shrink-0"
-                : "h-full w-[320px] flex-shrink-0"
+                ? "h-full w-90 shrink-0"
+                : "h-full w-80 shrink-0"
             }
           >
             <GebrekFormPanel

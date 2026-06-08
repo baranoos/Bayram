@@ -9,7 +9,8 @@
  *  - The SW fetches each URL in the background and stores them in its caches.
  */
 
-const SESSION_KEY = "pwa-cache-warmed";
+// Keep in sync with SW_VERSION in public/sw.js so a new deployment forces re-warm
+const SESSION_KEY = "pwa-cache-warmed-v4";
 
 const STATIC_PAGES = ["/", "/opdracht/nieuw"];
 
@@ -30,7 +31,7 @@ export async function warmCacheForCurrentUser(): Promise<void> {
   if (!("serviceWorker" in navigator)) return;
 
   // Only once per session — avoids hammering the server on every navigation
-  if (sessionStorage.getItem(SESSION_KEY)) return;
+  if (sessionStorage.getItem(SESSION_KEY) === "1") return;
 
   try {
     // Wait for an active SW
