@@ -4,7 +4,7 @@
  * online session.
  *
  * Strategy:
- *  - Each warm function runs once per browser session (separate sessionStorage flags).
+ *  - Each warm function runs once per browser session (separate localStorage flags).
  *  - warmCacheForCurrentUser: caches all opdracht pages + woning/meterstanden APIs.
  *  - warmKeuringTree: fetches the ENTIRE keuring tree in one request and writes
  *    every /api/keuring-children?id=X response into the SW cache synthetically,
@@ -34,7 +34,7 @@ export async function warmCacheForCurrentUser(): Promise<void> {
   if (!navigator.onLine) return;
   if (!("serviceWorker" in navigator)) return;
 
-  if (sessionStorage.getItem(SESSION_KEY) === "1") return;
+  if (localStorage.getItem(SESSION_KEY) === "1") return;
 
   try {
     const reg = await navigator.serviceWorker.ready;
@@ -60,7 +60,7 @@ export async function warmCacheForCurrentUser(): Promise<void> {
     ];
 
     reg.active.postMessage({ type: "PRECACHE_PAGES", pageUrls, apiUrls });
-    sessionStorage.setItem(SESSION_KEY, "1");
+    localStorage.setItem(SESSION_KEY, "1");
   } catch {
     // Non-critical
   }
@@ -76,7 +76,7 @@ export async function warmKeuringTree(): Promise<void> {
   if (!navigator.onLine) return;
   if (!("serviceWorker" in navigator)) return;
 
-  if (sessionStorage.getItem(KEURING_SESSION_KEY) === "1") return;
+  if (localStorage.getItem(KEURING_SESSION_KEY) === "1") return;
 
   try {
     const reg = await navigator.serviceWorker.ready;
@@ -90,7 +90,7 @@ export async function warmKeuringTree(): Promise<void> {
     };
 
     reg.active.postMessage({ type: "PRECACHE_KEURING_TREE", tree });
-    sessionStorage.setItem(KEURING_SESSION_KEY, "1");
+    localStorage.setItem(KEURING_SESSION_KEY, "1");
   } catch {
     // Non-critical
   }
