@@ -14,8 +14,8 @@
 // Keep in sync with SW_VERSION in public/sw.js — change forces a re-warm.
 // sessionStorage (not localStorage) so the warm runs once per browser session:
 // new tabs and reopened browsers always catch freshly-added opdrachten.
-const SESSION_KEY        = "pwa-cache-warmed-v5";
-const KEURING_SESSION_KEY = "pwa-keuring-tree-v2";
+const SESSION_KEY        = "pwa-cache-warmed-v6";
+const KEURING_SESSION_KEY = "pwa-keuring-tree-v3";
 
 const STATIC_PAGES = ["/", "/settings", "/opdracht/nieuw"];
 

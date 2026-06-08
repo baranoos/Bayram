@@ -3,7 +3,7 @@
  * Offline-first PWA: caching + sync queue + background sync
  */
 
-const SW_VERSION = 'v5';
+const SW_VERSION = 'v6';
 const STATIC_CACHE  = `eigenhuis-static-${SW_VERSION}`;
 const PAGES_CACHE   = `eigenhuis-pages-${SW_VERSION}`;
 const API_CACHE     = `eigenhuis-api-${SW_VERSION}`;
@@ -321,10 +321,12 @@ async function networkFirst(request, cacheName, timeoutMs, isAPI = false) {
 }
 
 async function networkFirstNavigation(request) {
-  // Absolute bare pathname — used as canonical cache key so any RSC request
-  // (which Next.js decorates with ?_rsc=<hash> that changes every navigation)
-  // can always be found by the same stable URL.
   const bareUrl = self.location.origin + new URL(request.url).pathname;
+  // Hard browser navigations (mode:"navigate") require a full HTML document.
+  // Soft Next.js navigations send RSC: 1 and receive RSC wire-format payloads.
+  // These two response types must NEVER be mixed — serving RSC text to a hard
+  // navigation causes the browser to display the raw wire format on screen.
+  const isHardNav = request.mode === 'navigate';
 
   try {
     const cache = await caches.open(PAGES_CACHE);
@@ -332,29 +334,46 @@ async function networkFirstNavigation(request) {
     try {
       const response = await fetch(request);
       if (response.ok) {
-        // Store under the original request AND under the bare pathname so that
-        // offline lookups with a different ?_rsc= hash still find this page.
+        // Always cache under the exact request URL (covers RSC responses too).
         cache.put(request, response.clone()).catch(() => {});
-        cache.put(bareUrl, response.clone()).catch(() => {});
+
+        // Only write to the bare pathname when the response is full HTML.
+        // RSC payloads (text/x-component) must NOT overwrite this slot because
+        // hard-reload cache hits use it and must receive HTML, not RSC text.
+        const ct = response.headers.get('content-type') || '';
+        if (ct.includes('text/html')) {
+          cache.put(bareUrl, response.clone()).catch(() => {});
+        }
       }
       return response;
     } catch {
-      // 1. Exact match
+      // Network unavailable — serve from cache
+
+      // 1. Exact URL match
       let cached = await cache.match(request);
-      if (cached) return cached;
+      if (cached) {
+        const ct = cached.headers.get('content-type') || '';
+        // Hard navigations must only receive HTML; skip RSC entries
+        if (!isHardNav || ct.includes('text/html')) return cached;
+      }
 
-      // 2. Ignore Vary — catches header mismatches (RSC vs full-page request)
+      // 2. Ignore Vary (handles different Accept/RSC headers for same path)
       cached = await cache.match(request, { ignoreVary: true });
-      if (cached) return cached;
+      if (cached) {
+        const ct = cached.headers.get('content-type') || '';
+        if (!isHardNav || ct.includes('text/html')) return cached;
+      }
 
-      // 3. Bare absolute pathname — strips ?_rsc=<hash> and other query params
+      // 3. Bare pathname — guaranteed HTML because of write-protection above
       cached = await cache.match(bareUrl, { ignoreVary: true });
-      if (cached) return cached;
+      if (cached) {
+        const ct = cached.headers.get('content-type') || '';
+        if (!isHardNav || ct.includes('text/html')) return cached;
+      }
 
       return offlineFallback(false);
     }
   } catch {
-    // Cache API unavailable — serve inline offline page
     return offlineFallback(false);
   }
 }
