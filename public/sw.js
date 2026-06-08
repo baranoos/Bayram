@@ -664,12 +664,33 @@ self.addEventListener('message', (event) => {
       event.waitUntil(
         (async () => {
           try {
-            const cache = await caches.open(API_CACHE);
+            const cache     = await caches.open(API_CACHE);
+            const parentIds = new Set(Object.keys(tree).map(Number));
+
+            // Find leaf nodes: appear as children but never as a parent key.
+            // Cache them with [] so clicking them offline triggers applyResult([])
+            // → form opens through the normal code path (no catch/fallback needed).
+            const leafIds = new Set();
+            for (const children of Object.values(tree)) {
+              for (const child of children) {
+                if (!parentIds.has(child.id)) leafIds.add(child.id);
+              }
+            }
+
+            const entries = [
+              ...Object.entries(tree).map(([parentId, children]) => ({
+                url:  `/api/keuring-children?id=${parentId}`,
+                body: JSON.stringify(children),
+              })),
+              ...[...leafIds].map((id) => ({
+                url:  `/api/keuring-children?id=${id}`,
+                body: '[]',
+              })),
+            ];
 
             await Promise.all(
-              Object.entries(tree).map(([parentId, children]) => {
-                const url      = `/api/keuring-children?id=${parentId}`;
-                const response = new Response(JSON.stringify(children), {
+              entries.map(({ url, body }) => {
+                const response = new Response(body, {
                   status:  200,
                   headers: { 'Content-Type': 'application/json', 'X-SW-Precached': 'keuring-tree' },
                 });
@@ -681,7 +702,7 @@ self.addEventListener('message', (event) => {
             for (const client of clients) {
               client.postMessage({
                 type:  'KEURING_TREE_CACHED',
-                count: Object.keys(tree).length,
+                count: entries.length,
               });
             }
           } catch {

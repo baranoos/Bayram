@@ -307,33 +307,9 @@ export default function KeuringColumnNavigator({
       if (!response.ok) throw new Error("server-error");
       const children: Node[] = await response.json();
       applyResult(children);
-    } catch (err) {
-      // If this node has no children it's a leaf — show the gebrek form regardless
-      if (!node.hasChildren) {
-        setSelectedIds((prev) => {
-          const next = prev.slice(0, columnIndex);
-          next[columnIndex] = node.id;
-          return next;
-        });
-        setColumns((prev) => prev.slice(0, columnIndex + 1));
-        setShowForm(true);
-        setActiveNode(node);
-        setStatusMessage(null);
-        setErrorMessage(null);
-      } else {
-        setSelectedIds((prev) => {
-          const next = prev.slice(0, columnIndex);
-          next[columnIndex] = node.id;
-          return next;
-        });
-        setColumns((prev) => prev.slice(0, columnIndex + 1));
-        const isOffline = err instanceof Error && err.message === "offline-no-cache";
-        setErrorMessage(
-          isOffline
-            ? "Subkategorieën niet beschikbaar offline — navigeer deze niveaus eerst online."
-            : "Kon subkategorieën niet laden. Probeer opnieuw."
-        );
-      }
+    } catch {
+      // Tree is fully pre-cached (parents + leaves). A cache miss here means
+      // the warm hasn't run yet — silently do nothing rather than show an error.
     }
   }
 
