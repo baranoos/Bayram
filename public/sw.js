@@ -3,7 +3,7 @@
  * Offline-first PWA: caching + sync queue + background sync
  */
 
-const SW_VERSION = 'v4';
+const SW_VERSION = 'v5';
 const STATIC_CACHE  = `eigenhuis-static-${SW_VERSION}`;
 const PAGES_CACHE   = `eigenhuis-pages-${SW_VERSION}`;
 const API_CACHE     = `eigenhuis-api-${SW_VERSION}`;
@@ -294,27 +294,33 @@ async function networkFirst(request, cacheName, timeoutMs, isAPI = false) {
 }
 
 async function networkFirstNavigation(request) {
+  // Absolute bare pathname — used as canonical cache key so any RSC request
+  // (which Next.js decorates with ?_rsc=<hash> that changes every navigation)
+  // can always be found by the same stable URL.
+  const bareUrl = self.location.origin + new URL(request.url).pathname;
+
+  const cache = await caches.open(PAGES_CACHE);
+
   try {
     const response = await fetch(request);
     if (response.ok) {
-      const cache = await caches.open(PAGES_CACHE);
+      // Store under the original request AND under the bare pathname so that
+      // offline lookups with a different ?_rsc= hash still find this page.
       cache.put(request, response.clone()).catch(() => {});
+      cache.put(bareUrl, response.clone()).catch(() => {});
     }
     return response;
   } catch {
-    const cache = await caches.open(PAGES_CACHE);
-
-    // Exact match
+    // 1. Exact match
     let cached = await cache.match(request);
     if (cached) return cached;
 
-    // Ignore Vary — finds HTML page cached by precache even when RSC headers present
+    // 2. Ignore Vary — catches header mismatches (RSC vs full-page request)
     cached = await cache.match(request, { ignoreVary: true });
     if (cached) return cached;
 
-    // Try clean pathname (strips query params like ?_rsc=...)
-    const cleanReq = new Request(new URL(request.url).pathname);
-    cached = await cache.match(cleanReq, { ignoreVary: true });
+    // 3. Bare absolute pathname — strips ?_rsc=<hash> and other query params
+    cached = await cache.match(bareUrl, { ignoreVary: true });
     if (cached) return cached;
 
     return offlineFallback(false);

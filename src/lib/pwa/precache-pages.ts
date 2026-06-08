@@ -12,9 +12,9 @@
  */
 
 // Keep in sync with SW_VERSION in public/sw.js — change forces a re-warm
-const SESSION_KEY        = "pwa-cache-warmed-v4";
+const SESSION_KEY        = "pwa-cache-warmed-v5";
 // Independent version for the keuring tree data
-const KEURING_SESSION_KEY = "pwa-keuring-tree-v1";
+const KEURING_SESSION_KEY = "pwa-keuring-tree-v2";
 
 const STATIC_PAGES = ["/", "/settings", "/opdracht/nieuw"];
 
