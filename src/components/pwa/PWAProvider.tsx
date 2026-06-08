@@ -17,7 +17,7 @@ import {
   type SyncQueueItem,
   type SyncResult,
 } from "@/lib/pwa/sync-queue";
-import { warmCacheForCurrentUser } from "@/lib/pwa/precache-pages";
+import { warmCacheForCurrentUser, warmKeuringTree } from "@/lib/pwa/precache-pages";
 
 // ─── Context shape ────────────────────────────────────────────────────────────
 
@@ -195,6 +195,10 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
       // Warm the SW cache with all important pages (once per session, in background)
       navigator.serviceWorker?.ready
         .then(() => warmCacheForCurrentUser())
+        .catch(() => {});
+      // Cache the full keuring tree so every level is navigable offline
+      navigator.serviceWorker?.ready
+        .then(() => warmKeuringTree())
         .catch(() => {});
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

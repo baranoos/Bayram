@@ -580,6 +580,41 @@ self.addEventListener('message', (event) => {
       break;
     }
 
+    // ── Full keuring tree — write every keuring-children response into cache ──
+    // The client fetches /api/keuring-tree (one request) and posts the result
+    // here. We synthetically populate the API cache with every parentId's
+    // children so selectNode() can work fully offline without network calls.
+    case 'PRECACHE_KEURING_TREE': {
+      const tree = data.tree;
+      if (!tree || typeof tree !== 'object') break;
+
+      event.waitUntil(
+        (async () => {
+          const cache = await caches.open(API_CACHE);
+
+          await Promise.all(
+            Object.entries(tree).map(([parentId, children]) => {
+              const url      = `/api/keuring-children?id=${parentId}`;
+              const response = new Response(JSON.stringify(children), {
+                status:  200,
+                headers: { 'Content-Type': 'application/json', 'X-SW-Precached': 'keuring-tree' },
+              });
+              return cache.put(url, response);
+            })
+          );
+
+          const clients = await self.clients.matchAll({ includeUncontrolled: true });
+          for (const client of clients) {
+            client.postMessage({
+              type:  'KEURING_TREE_CACHED',
+              count: Object.keys(tree).length,
+            });
+          }
+        })()
+      );
+      break;
+    }
+
     default:
       break;
   }
