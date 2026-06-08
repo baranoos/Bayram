@@ -50,6 +50,7 @@ export default function RootLayout({
     <html
       lang="nl"
       className={`${inter.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />

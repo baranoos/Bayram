@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTheme, type Theme, type FontSize } from "@/components/ThemeProvider";
 import { usePWA } from "@/components/pwa/PWAProvider";
 
@@ -157,6 +158,7 @@ function SizeButton({
 export default function SettingsPage() {
   const { theme, fontSize, setTheme, setFontSize } = useTheme();
   const { isOnline } = usePWA();
+  const router = useRouter();
   const [me, setMe] = useState<{ id: number; email: string | null; role: string } | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -222,6 +224,17 @@ export default function SettingsPage() {
 
   return (
     <main className="mx-auto max-w-lg space-y-4 px-4 py-8">
+
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+        Terug
+      </button>
 
       {/* Comfort */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">

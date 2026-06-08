@@ -43,30 +43,30 @@ export default function WorkspaceShell({
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-700 dark:bg-slate-900/90">
-        <div className="mx-auto flex max-w-[1680px] flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-          <div className="space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-slate-400">
+        <div className="mx-auto flex max-w-[1680px] items-center justify-between gap-4 px-4 py-4 lg:px-6">
+          <div className="min-w-0 space-y-0.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-400">
               Eigen Huis inspectie
             </p>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-              <h1 className="text-xl font-semibold text-slate-950 dark:text-white">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-base font-semibold text-slate-950 dark:text-white">
                 Opdracht #{opdrachtId}
               </h1>
-              <span className={`inline-flex w-fit rounded-full border px-3 py-1 text-xs font-medium ${statusTone(status)}`}>
+              <span className={`inline-flex w-fit rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusTone(status)}`}>
                 {status}
               </span>
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{title} · {address}</p>
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">{title} · {address}</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2">
             <Link
               href="/"
-              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-blue-200 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-400"
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-blue-200 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-400"
             >
               Home
             </Link>
-            <div className="hidden lg:flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+            <div className="hidden lg:flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
               Werkruimte actief
             </div>
           </div>
