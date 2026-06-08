@@ -17,6 +17,7 @@ import {
   type SyncQueueItem,
   type SyncResult,
 } from "@/lib/pwa/sync-queue";
+import { warmCacheForCurrentUser } from "@/lib/pwa/precache-pages";
 
 // ─── Context shape ────────────────────────────────────────────────────────────
 
@@ -146,7 +147,7 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
         console.warn("[PWA] Service worker registration failed:", err);
       });
 
-    // Messages from the SW (sync complete notifications)
+    // Messages from the SW
     const onMessage = (event: MessageEvent) => {
       if (event.data?.type === "SYNC_COMPLETE") {
         setLastSyncAt(new Date());
@@ -156,6 +157,7 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
         });
         refreshPendingCount();
       }
+      // PRECACHE_COMPLETE is informational — no UI action needed
     };
 
     navigator.serviceWorker.addEventListener("message", onMessage);
@@ -184,12 +186,16 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
     };
   }, [triggerSync]);
 
-  // ── Mount-time sync flush ──────────────────────────────────────────────────
+  // ── Mount-time sync flush + page cache warming ────────────────────────────
 
   useEffect(() => {
     refreshPendingCount();
     if (typeof navigator !== "undefined" && navigator.onLine) {
       triggerSync();
+      // Warm the SW cache with all important pages (once per session, in background)
+      navigator.serviceWorker?.ready
+        .then(() => warmCacheForCurrentUser())
+        .catch(() => {});
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only on mount

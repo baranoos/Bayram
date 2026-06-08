@@ -489,6 +489,58 @@ self.addEventListener('message', (event) => {
       }
       break;
 
+    case 'PRECACHE_PAGES': {
+      const pageUrls = Array.isArray(data.pageUrls) ? data.pageUrls : [];
+      const apiUrls  = Array.isArray(data.apiUrls)  ? data.apiUrls  : [];
+
+      if (pageUrls.length === 0 && apiUrls.length === 0) break;
+
+      event.waitUntil(
+        (async () => {
+          const [pageCache, apiCache] = await Promise.all([
+            caches.open(PAGES_CACHE),
+            caches.open(API_CACHE),
+          ]);
+
+          // Concurrency-limited fetch helper — avoids flooding the server
+          async function fetchAndCache(urls, cache) {
+            const BATCH = 4;
+            for (let i = 0; i < urls.length; i += BATCH) {
+              const batch = urls.slice(i, i + BATCH);
+              await Promise.all(
+                batch.map(async (url) => {
+                  try {
+                    // Skip if already cached (avoid redundant round-trips)
+                    const existing = await cache.match(url);
+                    if (existing) return;
+
+                    const response = await fetch(url, { credentials: 'include' });
+                    if (response.ok) {
+                      await cache.put(url, response);
+                    }
+                  } catch {
+                    // Network failure — page will be fetched on demand later
+                  }
+                })
+              );
+            }
+          }
+
+          await Promise.all([
+            fetchAndCache(pageUrls, pageCache),
+            fetchAndCache(apiUrls,  apiCache),
+          ]);
+
+          // Notify clients that precaching finished
+          const clients = await self.clients.matchAll({ includeUncontrolled: true });
+          for (const client of clients) {
+            client.postMessage({ type: 'PRECACHE_COMPLETE', count: pageUrls.length + apiUrls.length });
+          }
+        })()
+      );
+      break;
+    }
+
     default:
       break;
   }
