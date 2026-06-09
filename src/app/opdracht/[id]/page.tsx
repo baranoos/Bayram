@@ -14,7 +14,7 @@ export default async function OpdrachtKeuringPage({
     include: {
       child: {
         include: {
-          childRelations: {
+          parentRelations: {
             select: { id: true },
             take: 1,
           },
@@ -27,7 +27,7 @@ export default async function OpdrachtKeuringPage({
   const initialNodes = relations.map((relation) => ({
     id: relation.child.id,
     omschrijving: relation.child.omschrijving,
-    hasChildren: relation.child.childRelations.length > 0,
+    hasChildren: relation.child.parentRelations.length > 0,
   }));
 
   return (
