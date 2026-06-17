@@ -44,7 +44,6 @@ model Opdracht {
   opmerkingTekst       String?
   betalingswijze       String?
   extraUren            Int      @default(0)
-  waddentoeslag        Boolean  @default(false)
   ehbaCorrectie        Boolean  @default(false)
   correcties           String?
   createdAt            DateTime @default(now())
@@ -117,13 +116,15 @@ model Meterstand {
 }
 
 model Rapport {
-  id                  Int      @id @default(autoincrement())
-  opdrachtId          Int
-  rapporttype         String
-  representatiefEmail String?
-  status              String   @default("concept")
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                      Int      @id @default(autoincrement())
+  opdrachtId              Int
+  rapporttype             String
+  representatiefEmail     String?
+  signatureClient         String?
+  signatureRepresentative String?
+  status                  String   @default("concept")
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   opdracht Opdracht @relation(fields: [opdrachtId], references: [id], onDelete: Cascade)
 }
@@ -199,6 +200,8 @@ model Gebrek {
   keuringResultaatId Int
   aantal             Int     @default(1)
   ernstig            Boolean @default(false)
+  directHerstel      Boolean @default(false)
+  genoteerd          Boolean @default(true)
   standaardtekst     String?
   locatie            String?
   categorie          String?

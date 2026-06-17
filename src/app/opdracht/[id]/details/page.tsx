@@ -19,7 +19,8 @@ export default async function DetailsPage({
     notFound();
   }
 
-  const fundaQuery = encodeURIComponent(`${opdracht.adresStraat} ${opdracht.adresPostcode} ${opdracht.adresPlaats}`);
+  const fundaQuery  = encodeURIComponent(`${opdracht.adresStraat} ${opdracht.adresPostcode} ${opdracht.adresPlaats}`);
+  const mapsQuery   = encodeURIComponent(`${opdracht.adresStraat}, ${opdracht.adresPostcode} ${opdracht.adresPlaats}`);
 
   const defectCount = opdracht.resultaten.reduce(
     (total, resultaat) => total + resultaat.gebreken.length,
@@ -84,7 +85,7 @@ export default async function DetailsPage({
               <dt className="text-xs uppercase tracking-[0.25em] text-slate-400">Adres</dt>
               <dd className="mt-1 font-medium text-slate-900 dark:text-slate-100">{opdracht.adresStraat}</dd>
               <dd className="text-sm text-slate-500 dark:text-slate-400">{opdracht.adresPostcode} {opdracht.adresPlaats}</dd>
-              <dd className="mt-2">
+              <dd className="mt-2 flex flex-wrap gap-2">
                 <a
                   href={`https://www.funda.nl/zoeken/koop?q=${fundaQuery}`}
                   target="_blank"
@@ -96,6 +97,18 @@ export default async function DetailsPage({
                     <path strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M21 21H3V3h7" />
                   </svg>
                   <span>Locatie Funda</span>
+                </a>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${mapsQuery}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-4 w-4">
+                    <path strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+                    <circle cx="12" cy="9" r="2.5" strokeWidth="1.5" />
+                  </svg>
+                  <span>Plan de route!</span>
                 </a>
               </dd>
             </div>

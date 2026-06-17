@@ -5,6 +5,8 @@ type RequestBody = {
   keuringNodeId?: number;
   aantal?: number;
   ernstig?: boolean;
+  directHerstel?: boolean;
+  genoteerd?: boolean;
   standaardtekst?: string;
   opmerking?: string;
   locatie?: string;
@@ -68,6 +70,8 @@ export async function POST(
       keuringResultaatId: resultaat.id,
       aantal,
       ernstig: Boolean(body.ernstig),
+      directHerstel: Boolean(body.directHerstel),
+      genoteerd: body.genoteerd !== undefined ? Boolean(body.genoteerd) : true,
       standaardtekst: body.standaardtekst?.trim() || null,
       locatie: body.locatie?.trim() || null,
       categorie: body.categorie?.trim() || null,
