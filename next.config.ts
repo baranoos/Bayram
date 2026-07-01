@@ -12,6 +12,12 @@ const projectRoot =
 const nextConfig: NextConfig = {
   serverExternalPackages: ["puppeteer", "puppeteer-core", "@sparticuz/chromium"],
 
+  outputFileTracingIncludes: {
+    "/api/opdrachten/[opdrachtId]/rapporten/[rapportId]/pdf": [
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
+  },
+
   turbopack: {
     root: projectRoot,
   },
