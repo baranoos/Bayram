@@ -14,7 +14,7 @@
     "db:test": "node scripts/test-db.mjs",
     "db:find-pooler": "node scripts/try-pooler.mjs",
     "db:seed-user": "tsx prisma/seed-user.ts",
-    "postinstall": "prisma generate || true"
+    "postinstall": "puppeteer browsers install chrome && (prisma generate || true)"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
