@@ -3,7 +3,7 @@ import { join } from "path";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { generateRapportHtml, type GebrekenGroup } from "@/lib/pdf/rapport-html";
-import { getPdfLaunchOptions } from "@/lib/pdf/chrome";
+import chromium from "@sparticuz/chromium";
 
 export const dynamic = "force-dynamic";
 
@@ -121,8 +121,20 @@ export async function GET(
   });
 
   try {
-    const puppeteer = (await import("puppeteer")).default;
-    const browser = await puppeteer.launch(await getPdfLaunchOptions());
+    const isLinux = process.platform === "linux";
+    const puppeteer = (await import(isLinux ? "puppeteer-core" : "puppeteer")).default;
+    const browser = await puppeteer.launch(
+      isLinux
+        ? {
+            headless: true,
+            args: chromium.args,
+            executablePath: await chromium.executablePath(),
+          }
+        : {
+            headless: true,
+            args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+          }
+    );
 
     try {
       const page = await browser.newPage();
