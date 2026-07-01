@@ -10,7 +10,7 @@ const projectRoot =
     : path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["puppeteer", "puppeteer-core"],
+  serverExternalPackages: ["puppeteer", "puppeteer-core", "@sparticuz/chromium"],
 
   turbopack: {
     root: projectRoot,
