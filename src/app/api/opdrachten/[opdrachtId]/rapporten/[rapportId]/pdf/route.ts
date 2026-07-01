@@ -3,6 +3,7 @@ import { join } from "path";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { generateRapportHtml, type GebrekenGroup } from "@/lib/pdf/rapport-html";
+import { getPdfLaunchOptions } from "@/lib/pdf/chrome";
 
 export const dynamic = "force-dynamic";
 
@@ -121,10 +122,7 @@ export async function GET(
 
   try {
     const puppeteer = (await import("puppeteer")).default;
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
-    });
+    const browser = await puppeteer.launch(await getPdfLaunchOptions());
 
     try {
       const page = await browser.newPage();
