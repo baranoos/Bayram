@@ -195,7 +195,7 @@ function introText(data: PdfInput): string {
 
   if (rapport.rapporttype === "Opname") {
     /* Matches official Opname PDF wording exactly */
-    return `De Bouwkundige heeft op <strong>${fmt(opdracht.createdAt)}</strong> op verzoek van
+    return `De Bouwkundige heeft op <strong>${fmt(rapport.createdAt)}</strong> op verzoek van
       <strong>${esc(opdracht.opdrachtgeverNaam)}</strong> een keuring verricht van (een deel van) de woning
       <strong>${esc(opdracht.adresStraat)}</strong> te <strong>${esc(opdracht.adresPlaats)}</strong>.<br/><br/>
       De bouwkundige heeft in dit rapport zijn bevindingen weergegeven.`;
@@ -204,7 +204,7 @@ function introText(data: PdfInput): string {
   if (rapport.rapporttype === "Proces-verbaal") {
     return `Aan <strong>${esc(opdracht.opdrachtgeverNaam)}</strong>, is de woning
       <strong>${esc(opdracht.adresStraat)}</strong> te <strong>${esc(opdracht.adresPlaats)}</strong>
-      op <strong>${fmt(opdracht.createdAt)}</strong> door contractpartij
+      op <strong>${fmt(rapport.createdAt)}</strong> door contractpartij
       <strong>${esc(woning?.contractpartij)}</strong>, gevestigd te
       <strong>${esc(woning?.vestigingsplaatsContractpartij)}</strong>, vertegenwoordigd door
       <strong>${esc(woning?.vertegenwoordiger)}</strong> opgeleverd.
@@ -214,7 +214,7 @@ function introText(data: PdfInput): string {
   /* Schaduwrapport */
   return `Aan <strong>${esc(opdracht.opdrachtgeverNaam)}</strong>, is de woning
     <strong>${esc(opdracht.adresStraat)}</strong> te <strong>${esc(opdracht.adresPlaats)}</strong>
-    op <strong>${fmt(opdracht.createdAt)}</strong> door contractpartij
+    op <strong>${fmt(rapport.createdAt)}</strong> door contractpartij
     <strong>${esc(woning?.contractpartij)}</strong>, gevestigd te
     <strong>${esc(woning?.vestigingsplaatsContractpartij)}</strong>, vertegenwoordigd door
     <strong>${esc(woning?.vertegenwoordiger)}</strong> opgeleverd.<br/><br/>
@@ -247,7 +247,7 @@ function page5Body(data: PdfInput): string {
         binnen 3 maanden na heden worden hersteld.
       </p>
       <p style="font-size:10.5px;font-weight:700;color:#111;margin-bottom:30px;">
-        Datum: ${fmt(opdracht.createdAt)}
+        Datum: ${fmt(rapport.createdAt)}
       </p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px;">
         <div style="border:1px solid #e0e0e0;border-radius:6px;padding:14px;text-align:center;">
@@ -322,7 +322,7 @@ function disclaimer(): string {
 /* ═══════════════════════════════════════════════════════════════ */
 export function generateRapportHtml(data: PdfInput): string {
   const { opdracht, woning, meterstanden: ms, rapport, coverPhoto } = data;
-  const datumKeuring = fmt(opdracht.createdAt);
+  const datumKeuring = fmt(rapport.createdAt);
   const isOpname = rapport.rapporttype === "Opname";
 
   /* Opname = 4 pages (no signatures page); others = 5 pages */
