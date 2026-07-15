@@ -215,11 +215,13 @@ model Gebrek {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  username     String   @unique
-  email        String?  @unique
-  passwordHash String
-  role         String   @default("partner")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                   Int       @id @default(autoincrement())
+  username             String    @unique
+  email                String?   @unique
+  passwordHash         String
+  role                 String    @default("partner")
+  failedLoginAttempts  Int       @default(0)
+  lockedUntil          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }
