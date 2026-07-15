@@ -21,7 +21,7 @@ export default async function OpdrachtPage({
 
   async function deleteOpdracht() {
     "use server";
-    await prisma.opdracht.delete({ where: { id: opdrachtId } });
+    await prisma.opdracht.update({ where: { id: opdrachtId }, data: { status: "verwijderd" } });
     redirect("/");
   }
 

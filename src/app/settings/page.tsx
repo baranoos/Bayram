@@ -155,6 +155,15 @@ function SizeButton({
   );
 }
 
+type DeletedOpdracht = {
+  id: number;
+  opdrachtgeverNaam: string;
+  adresStraat: string;
+  adresPostcode: string;
+  adresPlaats: string;
+  updatedAt: string;
+};
+
 export default function SettingsPage() {
   const { theme, fontSize, setTheme, setFontSize } = useTheme();
   const { isOnline } = usePWA();
@@ -166,6 +175,38 @@ export default function SettingsPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [deletedOpdrachten, setDeletedOpdrachten] = useState<DeletedOpdracht[] | null>(null);
+  const [deletedError, setDeletedError] = useState<string | null>(null);
+  const [purgingId, setPurgingId] = useState<number | null>(null);
+
+  function loadDeletedOpdrachten() {
+    setDeletedError(null);
+    fetch("/api/opdrachten/deleted")
+      .then(async (r) => {
+        if (!r.ok) throw new Error();
+        const d = await r.json();
+        setDeletedOpdrachten(d.opdrachten ?? []);
+      })
+      .catch(() => setDeletedError("Kon verwijderde opdrachten niet laden"));
+  }
+
+  useEffect(() => {
+    loadDeletedOpdrachten();
+  }, []);
+
+  async function purgeOpdracht(id: number) {
+    if (!confirm("Weet u zeker dat u deze opdracht permanent wilt wissen uit de database? Dit kan niet ongedaan worden gemaakt.")) return;
+    setPurgingId(id);
+    try {
+      const res = await fetch(`/api/opdrachten/deleted/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setDeletedOpdrachten((prev) => prev?.filter((o) => o.id !== id) ?? null);
+    } catch {
+      setDeletedError("Permanent wissen mislukt");
+    } finally {
+      setPurgingId(null);
+    }
+  }
 
   // Load from localStorage first so the page renders offline
   useEffect(() => {
@@ -332,6 +373,48 @@ export default function SettingsPage() {
             {loading ? "Opslaan…" : "Wachtwoord opslaan"}
           </button>
         </form>
+      </div>
+
+      {/* Verwijderde opdrachten */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Verwijderde opdrachten</h2>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Opdrachten die zijn verwijderd staan hier. Ze zijn niet meer zichtbaar op het dashboard.
+          Je kunt ze hier permanent wissen uit de database.
+        </p>
+
+        {deletedError ? (
+          <p className="mt-4 text-sm text-red-600">{deletedError}</p>
+        ) : null}
+
+        {deletedOpdrachten === null ? (
+          <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">Laden…</p>
+        ) : deletedOpdrachten.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">Geen verwijderde opdrachten.</p>
+        ) : (
+          <ul className="mt-4 divide-y divide-slate-200 dark:divide-slate-700">
+            {deletedOpdrachten.map((opdracht) => (
+              <li key={opdracht.id} className="flex items-center justify-between gap-4 py-3">
+                <div className="text-sm">
+                  <p className="font-medium text-slate-900 dark:text-slate-100">
+                    #{opdracht.id} — {opdracht.opdrachtgeverNaam}
+                  </p>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    {opdracht.adresStraat}, {opdracht.adresPostcode} {opdracht.adresPlaats}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => purgeOpdracht(opdracht.id)}
+                  disabled={purgingId === opdracht.id}
+                  className="inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:opacity-60"
+                >
+                  {purgingId === opdracht.id ? "Bezig…" : "Permanent wissen"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </main>
   );

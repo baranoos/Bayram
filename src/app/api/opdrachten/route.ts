@@ -12,6 +12,7 @@ export async function GET(request: Request) {
 
   try {
     const opdrachten = await prisma.opdracht.findMany({
+      where: { status: { not: "verwijderd" } },
       select: { id: true, updatedAt: true },
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       take: limit,

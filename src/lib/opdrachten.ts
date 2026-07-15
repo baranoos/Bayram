@@ -58,6 +58,7 @@ export async function getDashboardOpdrachten(): Promise<{
 
   try {
     opdrachten = await prisma.opdracht.findMany({
+      where: { status: { not: "verwijderd" } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       include: {
         woning: {
@@ -171,7 +172,33 @@ export function getStatusLabel(status: string) {
       return "In behandeling";
     case "afgerond":
       return "Afgerond";
+    case "verwijderd":
+      return "Verwijderd";
     default:
       return status;
   }
+}
+
+export type DeletedOpdracht = {
+  id: number;
+  opdrachtgeverNaam: string;
+  adresStraat: string;
+  adresPostcode: string;
+  adresPlaats: string;
+  updatedAt: Date;
+};
+
+export async function getDeletedOpdrachten(): Promise<DeletedOpdracht[]> {
+  return prisma.opdracht.findMany({
+    where: { status: "verwijderd" },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      opdrachtgeverNaam: true,
+      adresStraat: true,
+      adresPostcode: true,
+      adresPlaats: true,
+      updatedAt: true,
+    },
+  });
 }
