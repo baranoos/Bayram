@@ -202,13 +202,14 @@ function introText(data: PdfInput): string {
   }
 
   if (rapport.rapporttype === "Proces-verbaal") {
-    return `Aan <strong>${esc(opdracht.opdrachtgeverNaam)}</strong>, is de woning
-      <strong>${esc(opdracht.adresStraat)}</strong> te <strong>${esc(opdracht.adresPlaats)}</strong>
-      op <strong>${fmt(rapport.createdAt)}</strong> door contractpartij
+    return `Aan ondergetekende <strong>${esc(opdracht.opdrachtgeverNaam)}</strong>, verkrijger van de woning
+      <strong>${esc(opdracht.adresStraat)}</strong> te <strong>${esc(opdracht.adresPlaats)}</strong>, is op
+      <strong>${fmt(rapport.createdAt)}</strong> door contractpartij
       <strong>${esc(woning?.contractpartij)}</strong>, gevestigd te
       <strong>${esc(woning?.vestigingsplaatsContractpartij)}</strong>, vertegenwoordigd door
-      <strong>${esc(woning?.vertegenwoordiger)}</strong> opgeleverd.
-      De verkrijger verklaart de sleutels van het pand in ontvangst te hebben genomen.`;
+      <strong>${esc(woning?.vertegenwoordiger)}</strong> de bovenvermelde woning opgeleverd.<br/><br/>
+      De verkrijger verklaart de sleutels van het pand in ontvangst te hebben genomen en heeft de op deze
+      en eventuele volgende pagina's vermelde tekortkomingen geconstateerd.`;
   }
 
   /* Schaduwrapport */
@@ -218,58 +219,47 @@ function introText(data: PdfInput): string {
     <strong>${esc(woning?.contractpartij)}</strong>, gevestigd te
     <strong>${esc(woning?.vestigingsplaatsContractpartij)}</strong>, vertegenwoordigd door
     <strong>${esc(woning?.vertegenwoordiger)}</strong> opgeleverd.<br/><br/>
-    De contractpartij heeft een proces-verbaal opgesteld dat door de verkrijger en de vertegenwoordiger
-    van de contractpartij is ondertekend. Het proces-verbaal is het officiële document waarin
-    tekortkomingen en andere gegevens zijn vastgelegd.<br/>
+    De contractpartij heeft een proces-verbaal opgesteld dat door de verkrijger van de woning en de
+    vertegenwoordiger van de contractpartij is ondertekend. Het proces-verbaal is het officiële document
+    waarin tekortkomingen en andere gegevens zijn vastgelegd.<br/><br/>
     Dit opleveringsrapport kan als schaduwrapport worden beschouwd. De bouwkundige heeft hierin zijn
     bevindingen weergegeven.`;
 }
 
 /* ─────────────────────────────────────────────────────────────── */
-/* Page 5 body (signatures / concept notice)                      */
-/* Only rendered for Schaduwrapport and Proces-verbaal            */
+/* Sign-off block (akkoordverklaring + handtekeningen)             */
+/* Only rendered for Proces-verbaal, inline at the bottom of the  */
+/* rapportage page — the official template has no separate page. */
 /* ─────────────────────────────────────────────────────────────── */
-function page5Body(data: PdfInput): string {
-  const { rapport, opdracht } = data;
-
-  if (rapport.rapporttype === "Proces-verbaal") {
-    const sigRep    = rapport.signatureRepresentative ?? "";
-    const sigClient = rapport.signatureClient ?? "";
-
-    return `
-      <p style="font-size:10.5px;color:#333;line-height:1.75;margin-bottom:10px;">
-        De contractpartij verklaart zich akkoord met de in dit proces-verbaal geregistreerde gegevens.
-      </p>
-      <p style="font-size:10.5px;color:#333;line-height:1.75;margin-bottom:10px;">
-        Tevens verklaart de contractpartij dat hij bovenstaande tekortkomingen binnen de in de
-        contractstukken bepaalde periode zal hebben hersteld. Indien en voor zover de contractstukken
-        geen periode voorschrijven, zullen de genoemde tekortkomingen onverwijld, maar uiterlijk
-        binnen 3 maanden na heden worden hersteld.
-      </p>
-      <p style="font-size:10.5px;font-weight:700;color:#111;margin-bottom:30px;">
-        Datum: ${fmt(rapport.createdAt)}
-      </p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px;">
-        <div style="border:1px solid #e0e0e0;border-radius:6px;padding:14px;text-align:center;">
-          <div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#999;margin-bottom:12px;">De Contractpartij</div>
-          <div style="height:100px;display:flex;align-items:center;justify-content:center;background:#fafafa;border-radius:4px;">
-            ${sigRep ? `<img src="${sigRep}" style="max-height:96px;max-width:100%;object-fit:contain;" alt="Handtekening contractpartij"/>` : '<span style="color:#ccc;font-size:11px;">Geen handtekening</span>'}
-          </div>
-        </div>
-        <div style="border:1px solid #e0e0e0;border-radius:6px;padding:14px;text-align:center;">
-          <div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#999;margin-bottom:12px;">De Verkrijger</div>
-          <div style="height:100px;display:flex;align-items:center;justify-content:center;background:#fafafa;border-radius:4px;">
-            ${sigClient ? `<img src="${sigClient}" style="max-height:96px;max-width:100%;object-fit:contain;" alt="Handtekening verkrijger"/>` : '<span style="color:#ccc;font-size:11px;">Geen handtekening</span>'}
-          </div>
-        </div>
-      </div>`;
-  }
+function signOffBlock(data: PdfInput): string {
+  const { rapport } = data;
+  const sigRep    = rapport.signatureRepresentative ?? "";
+  const sigClient = rapport.signatureClient ?? "";
 
   return `
-    <div style="border:1px solid #e5e7eb;border-radius:6px;padding:28px;text-align:center;background:#fafafa;margin-top:10px;">
-      <p style="font-size:12px;color:#666;font-style:italic;">
-        Dit betreft een concept-schaduwrapport zonder definitieve digitale fiattering.
-      </p>
+    <p style="font-size:10.5px;color:#333;line-height:1.75;margin:18px 0 14px;">
+      De contractpartij verklaart zich akkoord met de in dit proces-verbaal geregistreerde gegevens.
+      Tevens verklaart de contractpartij dat hij bovenstaande tekortkomingen binnen de in de
+      contractstukken bepaalde periode zal hebben hersteld. Indien en voor zover de contractstukken
+      geen periode voorschrijven, zullen de genoemde tekortkomingen onverwijld, maar uiterlijk
+      binnen 3 maanden na heden worden hersteld.
+    </p>
+    <p style="font-size:10.5px;color:#333;margin-bottom:16px;">
+      Datum: ${fmt(rapport.createdAt)}
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px;">
+      <div style="text-align:center;">
+        <div style="height:80px;display:flex;align-items:center;justify-content:center;">
+          ${sigRep ? `<img src="${sigRep}" style="max-height:76px;max-width:100%;object-fit:contain;" alt="Handtekening contractpartij"/>` : '<span style="color:#ccc;font-size:11px;">Geen handtekening</span>'}
+        </div>
+        <div style="font-size:10px;color:#333;border-top:1px solid #ccc;padding-top:4px;">De contractpartij</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="height:80px;display:flex;align-items:center;justify-content:center;">
+          ${sigClient ? `<img src="${sigClient}" style="max-height:76px;max-width:100%;object-fit:contain;" alt="Handtekening verkrijger"/>` : '<span style="color:#ccc;font-size:11px;">Geen handtekening</span>'}
+        </div>
+        <div style="font-size:10px;color:#333;border-top:1px solid #ccc;padding-top:4px;">De verkrijger</div>
+      </div>
     </div>`;
 }
 
@@ -324,9 +314,10 @@ export function generateRapportHtml(data: PdfInput): string {
   const { opdracht, woning, meterstanden: ms, rapport, coverPhoto } = data;
   const datumKeuring = fmt(rapport.createdAt);
   const isOpname = rapport.rapporttype === "Opname";
+  const hasGebreken = data.gebrekenGroups.length > 0;
 
-  /* Opname = 4 pages (no signatures page); others = 5 pages */
-  const totalPages = isOpname ? 4 : 5;
+  /* Voorblad, Toelichting, Basisgegevens, Rapportage — 4 pages for every rapporttype */
+  const totalPages = 4;
 
   /* Satisfy = orange script headings, Raleway = all body/UI text */
   const fonts = `
@@ -439,6 +430,8 @@ ${fonts}
       <p style="font-size:10px;color:#333;line-height:1.8;margin-top:8px;">
         Tijdens een keuring geeft de bouwkundige vaak verschillende tips over het gebruik van een nieuwe woning en de
         installaties, over het schoonmaken van onderdelen en toegepaste materialen. Deze tips zijn niet opgenomen in dit rapport.
+        Voor een selectie van veel genoemde adviezen verwijzen wij u naar
+        <a href="https://www.eigenhuis.nl/opleveringskeuring-tips-en-onderhoud" style="color:#2b6cb0;text-decoration:underline;">www.eigenhuis.nl/opleveringskeuring-tips-en-onderhoud</a>.
       </p>
     </section>
 
@@ -451,6 +444,11 @@ ${fonts}
         u, meestal tot zes maanden na de oplevering, melden bij uw contractpartij. Houd er rekening mee dat krassen en
         beschadigingen na oplevering doorgaans lastig onder de aansprakelijkheid van de contractpartij zijn te brengen, tenzij
         u aannemelijk kunt maken dat u deze beschadigingen niet zelf heeft kunnen veroorzaken.
+      </p>
+      <p style="font-size:10px;color:#333;line-height:1.8;margin-top:8px;">
+        Kijk voor alle termijnen in de voorwaarden van uw koop-aannemingsovereenkomst en voor meer informatie over
+        bijvoorbeeld de geldende periodes op
+        <a href="https://www.eigenhuis.nl" style="color:#2b6cb0;text-decoration:underline;">www.eigenhuis.nl</a>.
       </p>
       <p style="font-size:10px;color:#333;line-height:1.8;margin-top:8px;">
         Voor alle gebreken die u tegenkomt geldt: meld dit gebrek direct schriftelijk aan de contractpartij. Is uw woning
@@ -470,7 +468,8 @@ ${fonts}
         Mocht de contractpartij de opleveringsgebreken, of gebreken die tijdens de eerste drie maanden opduiken niet
         herstellen, dan heeft u met deze 5%-regeling een stok achter de deur. Laat de notaris vóór het verstrijken van de
         driemaandentermijn in een (aangetekende) brief weten dat u (een redelijk deel van) het depot of de bankgarantie wilt
-        handhaven totdat de nog openstaande gebreken zijn hersteld.
+        handhaven totdat de nog openstaande gebreken zijn hersteld. Zie voor meer informatie over de 5%-regeling
+        <a href="https://www.eigenhuis.nl/vijf-procent-regeling" style="color:#2b6cb0;text-decoration:underline;">www.eigenhuis.nl/vijf-procent-regeling</a>.
       </p>
     </section>
 
@@ -579,6 +578,8 @@ ${fonts}
 
     <!-- Rapportage sub-heading -->
     <h3 class="script" style="font-size:20px;margin-bottom:8px;">Rapportage</h3>
+
+    ${hasGebreken ? `
     <p style="font-size:10px;color:#333;line-height:1.7;margin-bottom:12px;">
       In onderstaand overzicht zijn de geconstateerde gebreken door de bouwkundige vastgelegd en eventuele opmerkingen geplaatst.
     </p>
@@ -626,36 +627,16 @@ ${fonts}
           ${gebrekenRows(data.gebrekenGroups, isOpname)}
         </tbody>
       </table>
-    </div>
+    </div>` : `
+    <p style="font-size:10px;color:#333;line-height:1.7;">Er zijn geen gebreken geconstateerd</p>`}
 
-    <!-- For Opname: disclaimer lives here at bottom of page 4 -->
-    ${isOpname ? disclaimer() : ""}
+    <!-- Proces-verbaal: akkoordverklaring + handtekeningen, inline on this page -->
+    ${rapport.rapporttype === "Proces-verbaal" ? signOffBlock(data) : ""}
+
+    ${disclaimer()}
   </div>
   ${footer(opdracht.id, 4, totalPages)}
 </div>
-
-
-${!isOpname ? `
-<!-- ═══════════════════════════════════════════════════════════════ -->
-<!-- PAGINA 5 — ONDERTEKENING / COLOFON (not for Opname)            -->
-<!-- ═══════════════════════════════════════════════════════════════ -->
-<div class="page" style="padding:17mm 20mm 14mm;display:flex;flex-direction:column;min-height:297mm;">
-  <div style="flex:1;">
-    <h2 class="script" style="font-size:22px;margin-bottom:16px;">
-      ${rapport.rapporttype === "Proces-verbaal" ? "Ondertekening" : "Afronding"}
-    </h2>
-    ${page5Body(data)}
-  </div>
-
-  <div>
-    ${disclaimer()}
-    <div style="border-top:1px solid #ddd;padding-top:8px;margin-top:12px;display:flex;justify-content:space-between;font-size:8px;color:#aaa;">
-      <span>Opdrachtnummer ${opdracht.id}</span>
-      <span>5 van 5</span>
-    </div>
-  </div>
-</div>
-` : ""}
 
 
 </body>
