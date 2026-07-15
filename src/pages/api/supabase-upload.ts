@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { IncomingForm, type Fields, type Files } from 'formidable';
 import fs from 'fs';
-import path from 'path';
+import os from 'os';
 import { createClient } from '@supabase/supabase-js';
 
 export const config = {
@@ -24,8 +24,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: 'Supabase not configured' });
   }
 
-  const uploadDir = path.join(process.cwd(), '.temp-uploads');
-  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+  // os.tmpdir() resolves to /tmp on Vercel — the only writable directory
+  // available to a serverless function. process.cwd() is read-only there.
+  const uploadDir = os.tmpdir();
 
   const form = new IncomingForm({
     multiples: false,
