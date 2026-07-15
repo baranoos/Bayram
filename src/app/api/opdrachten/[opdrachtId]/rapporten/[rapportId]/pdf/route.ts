@@ -122,7 +122,9 @@ export async function GET(
 
   try {
     const isLinux = process.platform === "linux";
-    const puppeteer = (await import(isLinux ? "puppeteer-core" : "puppeteer")).default;
+    const puppeteer = isLinux
+      ? (await import("puppeteer-core")).default
+      : (await import("puppeteer")).default;
     const browser = await puppeteer.launch(
       isLinux
         ? {
