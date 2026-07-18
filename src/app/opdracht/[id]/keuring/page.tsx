@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import KeuringColumnNavigator from "@/components/keuring/KeuringColumnNavigator";
 import { prisma } from "@/lib/prisma";
 
@@ -8,6 +9,10 @@ export default async function OpdrachtKeuringPage({
 }) {
   const { id } = await params;
   const opdrachtId = Number(id);
+
+  if (Number.isNaN(opdrachtId)) {
+    notFound();
+  }
 
   const relations = await prisma.keuringNodeRelation.findMany({
     where: { parentId: 1 },

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { hashPassword, verifyPassword } from "@/lib/auth";
+import { hashPassword, payloadUserId, verifyPassword } from "@/lib/auth";
 import { getAuthPayloadFromRequest } from "@/lib/auth-request";
 import { prisma } from "@/lib/prisma";
+import { MIN_PASSWORD_LENGTH } from "@/lib/users";
 
 export async function POST(req: Request) {
   const payload = getAuthPayloadFromRequest(req);
@@ -20,11 +21,12 @@ export async function POST(req: Request) {
   if (!currentPassword || !newPassword) {
     return NextResponse.json({ error: "Vul alle velden in" }, { status: 400 });
   }
-  if (newPassword.length < 8) {
-    return NextResponse.json({ error: "Nieuw wachtwoord moet minimaal 8 tekens zijn" }, { status: 400 });
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
+    return NextResponse.json({ error: `Nieuw wachtwoord moet minimaal ${MIN_PASSWORD_LENGTH} tekens zijn` }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({ where: { id: Number(payload.sub) } });
+  const id = payloadUserId(payload);
+  const user = id === null ? null : await prisma.user.findUnique({ where: { id } });
   if (!user) {
     return NextResponse.json({ error: "Gebruiker niet gevonden" }, { status: 404 });
   }

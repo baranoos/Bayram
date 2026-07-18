@@ -46,9 +46,11 @@ model Opdracht {
   extraUren            Int      @default(0)
   ehbaCorrectie        Boolean  @default(false)
   correcties           String?
+  createdByUserId      Int?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
+  createdBy    User?    @relation("OpdrachtCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   woning       Woning?
   resultaten   KeuringResultaat[]
   meterstanden Meterstand?
@@ -123,10 +125,12 @@ model Rapport {
   signatureClient         String?
   signatureRepresentative String?
   status                  String   @default("concept")
+  generatedByUserId       Int?
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
-  opdracht Opdracht @relation(fields: [opdrachtId], references: [id], onDelete: Cascade)
+  opdracht    Opdracht @relation(fields: [opdrachtId], references: [id], onDelete: Cascade)
+  generatedBy User?    @relation("RapportGeneratedBy", fields: [generatedByUserId], references: [id], onDelete: SetNull)
 }
 
 model Opmerking {
@@ -218,10 +222,16 @@ model User {
   id                   Int       @id @default(autoincrement())
   username             String    @unique
   email                String?   @unique
+  name                 String?
   passwordHash         String
-  role                 String    @default("partner")
+  role                 String    @default("EMPLOYEE")
+  active               Boolean   @default(true)
   failedLoginAttempts  Int       @default(0)
   lockedUntil          DateTime?
+  lastLoginAt          DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+
+  createdOpdrachten  Opdracht[] @relation("OpdrachtCreatedBy")
+  generatedRapporten Rapport[]  @relation("RapportGeneratedBy")
 }

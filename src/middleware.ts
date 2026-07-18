@@ -6,19 +6,32 @@ const PUBLIC_PATHS = ["/login"];
 
 const PUBLIC_API_PREFIXES = ["/api/auth/login", "/api/auth/status"];
 
-function isPublicPath(pathname: string) {
-  if (PUBLIC_PATHS.includes(pathname)) return true;
-  return PUBLIC_API_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+// Owner-only surface. This is a fast, edge-level check against the JWT's
+// role claim — the routes/page themselves re-check role AND active status
+// against the database, which is the authoritative check.
+const OWNER_ONLY_PREFIXES = ["/settings/gebruikers", "/api/users"];
+
+function matchesAnyPrefix(pathname: string, prefixes: string[]) {
+  return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
-async function verifyAuthToken(token: string) {
+function isPublicPath(pathname: string) {
+  if (PUBLIC_PATHS.includes(pathname)) return true;
+  return matchesAnyPrefix(pathname, PUBLIC_API_PREFIXES);
+}
+
+function isOwnerOnlyPath(pathname: string) {
+  return matchesAnyPrefix(pathname, OWNER_ONLY_PREFIXES);
+}
+
+async function verifyAuthToken(token: string): Promise<{ role: string } | null> {
   const secret = process.env.AUTH_JWT_SECRET;
-  if (!secret) return false;
+  if (!secret) return null;
   try {
-    await jwtVerify(token, new TextEncoder().encode(secret));
-    return true;
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
+    return { role: String(payload.role ?? "") };
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -38,7 +51,8 @@ export async function middleware(request: NextRequest) {
   }
 
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
-  const isAuthenticated = token ? await verifyAuthToken(token) : false;
+  const auth = token ? await verifyAuthToken(token) : null;
+  const isAuthenticated = auth !== null;
 
   if (pathname === "/login") {
     if (isAuthenticated) {
@@ -60,7 +74,24 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  if (isOwnerOnlyPath(pathname) && auth.role !== "OWNER") {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+    }
+    return NextResponse.redirect(new URL("/settings", request.url));
+  }
+
+  const res = NextResponse.next();
+
+  // Authenticated pages must never be served from the browser's back/forward
+  // cache: without this, pressing "back" after logout can briefly show the
+  // previous user's cached page (email, nav) even though their session is
+  // already invalid server-side.
+  if (!pathname.startsWith("/api/")) {
+    res.headers.set("Cache-Control", "no-store");
+  }
+
+  return res;
 }
 
 export const config = {

@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { payloadUserId } from "@/lib/auth";
+import { getAuthPayloadFromRequest } from "@/lib/auth-request";
 
 type Body = {
   intent?: string;
@@ -83,6 +85,8 @@ export async function POST(
       ? "niet akkoord"
       : "concept";
 
+  const generatedByUserId = payloadUserId(getAuthPayloadFromRequest(request));
+
   const rapport = await prisma.rapport.create({
     data: {
       opdrachtId,
@@ -91,6 +95,7 @@ export async function POST(
       signatureClient: body.signatureClient ?? null,
       signatureRepresentative: body.signatureRepresentative ?? null,
       status: newStatus,
+      generatedByUserId,
     },
   });
 

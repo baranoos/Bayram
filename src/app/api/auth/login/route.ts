@@ -45,25 +45,37 @@ export async function POST(req: Request) {
     );
   }
 
+  if (!user.active) {
+    return NextResponse.json(
+      { error: "Dit account is gedeactiveerd. Neem contact op met de beheerder." },
+      { status: 403 }
+    );
+  }
+
   const ok = await verifyPassword(password, user.passwordHash);
   if (!ok) {
     const attempts = user.failedLoginAttempts + 1;
+    const justLocked = attempts >= MAX_LOGIN_ATTEMPTS;
     await prisma.user.update({
       where: { id: user.id },
       data: {
         failedLoginAttempts: attempts,
-        lockedUntil: attempts >= MAX_LOGIN_ATTEMPTS ? new Date(Date.now() + LOCKOUT_MINUTES * 60_000) : null,
+        lockedUntil: justLocked ? new Date(Date.now() + LOCKOUT_MINUTES * 60_000) : null,
       },
     });
+    if (justLocked) {
+      return NextResponse.json(
+        { error: `Te veel mislukte pogingen. Probeer over ${LOCKOUT_MINUTES} minuten opnieuw.` },
+        { status: 429 }
+      );
+    }
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
 
-  if (user.failedLoginAttempts > 0 || user.lockedUntil) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { failedLoginAttempts: 0, lockedUntil: null },
-    });
-  }
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: new Date() },
+  });
 
   const token = signToken({
     sub: String(user.id),

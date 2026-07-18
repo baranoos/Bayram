@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import SectionCard from "@/components/workspace/SectionCard";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUserId } from "@/lib/current-user";
 
 async function createOpdracht(formData: FormData) {
   "use server";
@@ -21,6 +22,7 @@ async function createOpdracht(formData: FormData) {
   const typeWoning = String(formData.get("typeWoning") ?? "").trim() || null;
   const betalingswijze = String(formData.get("betalingswijze") ?? "").trim() || null;
   const extraUren = Number(formData.get("extraUren") ?? 0) || 0;
+  const createdByUserId = await getCurrentUserId();
 
   const opdracht = await prisma.opdracht.create({
     data: {
@@ -34,6 +36,7 @@ async function createOpdracht(formData: FormData) {
       adresPlaats,
       betalingswijze,
       extraUren,
+      createdByUserId,
       woning: {
         create: {},
       },

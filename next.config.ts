@@ -12,6 +12,16 @@ const projectRoot =
 const nextConfig: NextConfig = {
   serverExternalPackages: ["puppeteer", "puppeteer-core", "@sparticuz/chromium"],
 
+  experimental: {
+    // Default proxy body cap is 10MB, which silently truncates larger photo
+    // uploads mid-stream (formidable then fails with a generic parse error).
+    // Note: on actual Vercel deployment, serverless functions still enforce
+    // their own ~4.5MB request body limit independent of this setting — see
+    // release report for the full explanation and the existing R2 presigned
+    // direct-to-storage upload path as the long-term fix for larger files.
+    proxyClientMaxBodySize: "20mb",
+  },
+
   outputFileTracingIncludes: {
     "/api/opdrachten/[opdrachtId]/rapporten/[rapportId]/pdf": [
       "./node_modules/@sparticuz/chromium/bin/**/*",

@@ -122,6 +122,8 @@ export async function getDashboardOpdrachten(): Promise<{
 }
 
 export const getWorkspaceOpdracht = cache(async function getWorkspaceOpdracht(opdrachtId: number) {
+  if (Number.isNaN(opdrachtId)) return null;
+
   const opdracht = await prisma.opdracht.findUnique({
     where: { id: opdrachtId },
     include: {

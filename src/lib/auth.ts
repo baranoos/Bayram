@@ -33,6 +33,23 @@ export function verifyToken(token: string) {
   return jwt.verify(token, JWT_SECRET) as AuthTokenPayload;
 }
 
+/** verifyToken(), but returns null instead of throwing for a missing/invalid/expired token. */
+export function safeVerifyToken(token: string | null | undefined): AuthTokenPayload | null {
+  if (!token) return null;
+  try {
+    return verifyToken(token);
+  } catch {
+    return null;
+  }
+}
+
+/** Numeric user id from a token payload's `sub` claim, or null if absent/malformed. */
+export function payloadUserId(payload: AuthTokenPayload | null): number | null {
+  if (!payload) return null;
+  const id = Number(payload.sub);
+  return Number.isNaN(id) ? null : id;
+}
+
 export function parseBearer(token?: string | null) {
   if (!token) return null;
   const m = token.match(/^Bearer\s+(.+)$/i);

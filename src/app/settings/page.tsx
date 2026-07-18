@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme, type Theme, type FontSize } from "@/components/ThemeProvider";
 import { usePWA } from "@/components/pwa/PWAProvider";
@@ -281,6 +282,18 @@ export default function SettingsPage() {
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h1 className="text-2xl font-semibold text-slate-950 dark:text-white">Instellingen</h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{me?.email ?? "Account"}</p>
+
+        {me?.role === "OWNER" ? (
+          <Link
+            href="/settings/gebruikers"
+            className="mt-6 flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700 transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
+          >
+            Gebruikersbeheer
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        ) : null}
 
         {/* Theme cards */}
         <h2 className="mt-8 text-base font-semibold text-slate-900 dark:text-slate-100">Weergave</h2>

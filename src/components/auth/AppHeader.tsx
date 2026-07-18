@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { usePWA } from "@/components/pwa/PWAProvider";
 
-type Me = { id: number; email: string | null; role: string } | null;
+type Me = { id: number; email: string | null; name?: string | null; role: string } | null;
 
 const ME_KEY = "eh-user";
 
@@ -20,7 +20,6 @@ function loadCachedMe(): Me {
 
 export function AppHeader() {
   const pathname = usePathname();
-  const router = useRouter();
   const [me, setMe] = useState<Me>(null);
   const { isOnline, isSyncing, pendingCount, triggerSync, lastSyncAt, lastSyncResult } = usePWA();
 
@@ -42,6 +41,21 @@ export function AppHeader() {
     setMe(loadCachedMe());
   }, []);
 
+  // Chrome can restore a page from the back/forward cache with its whole JS
+  // runtime frozen and resumed as-is — mount-time effects don't re-run, so a
+  // stale logged-in UI could otherwise reappear after pressing "back" past a
+  // logout. A persisted pageshow means exactly that happened; force a real
+  // reload so the auth check above runs again against the current session.
+  useEffect(() => {
+    function handlePageShow(event: PageTransitionEvent) {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    }
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
   // Fetch fresh user — only update state on a real 200 response
   useEffect(() => {
     if (pathname === "/login") return;
@@ -52,7 +66,15 @@ export function AppHeader() {
         if (d?.user) {
           setMe(d.user);
           try { localStorage.setItem(ME_KEY, JSON.stringify(d.user)); } catch {}
+          return;
         }
+        // Server actively says there's no session (account deactivated or
+        // removed) — drop the stale cached identity and send them to login.
+        // Hard navigation (see logout() below) so the client-side route
+        // cache doesn't keep serving this now-invalid page on "back".
+        try { localStorage.removeItem(ME_KEY); } catch {}
+        setMe(null);
+        window.location.href = "/login";
       })
       .catch(() => {}); // network error — keep cached state
   }, [pathname]);
@@ -60,9 +82,12 @@ export function AppHeader() {
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     try { localStorage.removeItem(ME_KEY); } catch {}
-    setMe(null);
-    router.push("/login");
-    router.refresh();
+    // Hard navigation, not router.push: this drops Next.js's in-memory
+    // client-side route cache along with the whole JS runtime, so a later
+    // "back" button press can't instantly restore a cached authenticated
+    // page from before logout — it has to hit the server (and middleware)
+    // again, which now sees no valid session.
+    window.location.href = "/login";
   }
 
   if (pathname === "/login") return null;
