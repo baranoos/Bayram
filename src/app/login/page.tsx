@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import PasswordInput from "@/components/auth/PasswordInput";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -58,11 +59,10 @@ function LoginForm() {
           </label>
           <label className="mb-4 block text-sm font-medium text-slate-700">
             Wachtwoord
-            <input
+            <PasswordInput
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="mt-1 block w-full rounded-xl border border-slate-200 p-3 text-slate-900"
-              type="password"
               autoComplete="current-password"
               required
             />

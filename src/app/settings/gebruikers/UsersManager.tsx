@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import PasswordInput from "@/components/auth/PasswordInput";
 
 type SafeUser = {
   id: number;
@@ -480,7 +481,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
         </label>
         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
           Wachtwoord
-          <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" minLength={8} required className={fieldInputClass} />
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required className={fieldInputClass} />
         </label>
         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
           Rol
@@ -602,7 +603,7 @@ function ResetPasswordModal({ user, onClose }: { user: SafeUser; onClose: () => 
         <form onSubmit={submit} className="mt-4 space-y-4">
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
             Nieuw wachtwoord
-            <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} type="password" minLength={8} required className={fieldInputClass} />
+            <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={8} required className={fieldInputClass} />
           </label>
 
           {error ? <p className="text-sm text-red-600">{error}</p> : null}

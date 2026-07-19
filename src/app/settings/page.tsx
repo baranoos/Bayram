@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme, type Theme, type FontSize } from "@/components/ThemeProvider";
 import { usePWA } from "@/components/pwa/PWAProvider";
+import PasswordInput from "@/components/auth/PasswordInput";
 
 function ThemeCard({
   value,
@@ -341,22 +342,20 @@ export default function SettingsPage() {
         <form onSubmit={changePassword} className={`mt-4 space-y-4 ${!isOnline ? "pointer-events-none opacity-50" : ""}`}>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
             Huidig wachtwoord
-            <input
+            <PasswordInput
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               className="mt-1 block w-full rounded-xl border border-slate-200 p-3"
-              type="password"
               autoComplete="current-password"
               required
             />
           </label>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
             Nieuw wachtwoord
-            <input
+            <PasswordInput
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               className="mt-1 block w-full rounded-xl border border-slate-200 p-3"
-              type="password"
               autoComplete="new-password"
               minLength={8}
               required
@@ -364,11 +363,10 @@ export default function SettingsPage() {
           </label>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
             Bevestig nieuw wachtwoord
-            <input
+            <PasswordInput
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="mt-1 block w-full rounded-xl border border-slate-200 p-3"
-              type="password"
               autoComplete="new-password"
               minLength={8}
               required

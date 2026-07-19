@@ -59,24 +59,35 @@ export function AppHeader() {
   // Fetch fresh user — only update state on a real 200 response
   useEffect(() => {
     if (pathname === "/login") return;
-    fetch("/api/auth/me")
-      .then(async (r) => {
-        if (!r.ok) return; // offline (503) or auth error — keep cached state
-        const d = await r.json();
-        if (d?.user) {
-          setMe(d.user);
-          try { localStorage.setItem(ME_KEY, JSON.stringify(d.user)); } catch {}
-          return;
-        }
-        // Server actively says there's no session (account deactivated or
-        // removed) — drop the stale cached identity and send them to login.
-        // Hard navigation (see logout() below) so the client-side route
-        // cache doesn't keep serving this now-invalid page on "back".
-        try { localStorage.removeItem(ME_KEY); } catch {}
-        setMe(null);
-        window.location.href = "/login";
-      })
-      .catch(() => {}); // network error — keep cached state
+
+    function checkSession() {
+      fetch("/api/auth/me")
+        .then(async (r) => {
+          if (!r.ok) return; // offline (503) or auth error — keep cached state
+          const d = await r.json();
+          if (d?.user) {
+            setMe(d.user);
+            try { localStorage.setItem(ME_KEY, JSON.stringify(d.user)); } catch {}
+            return;
+          }
+          // Server actively says there's no session (account deactivated or
+          // removed) — drop the stale cached identity and send them to login.
+          // Hard navigation (see logout() below) so the client-side route
+          // cache doesn't keep serving this now-invalid page on "back".
+          try { localStorage.removeItem(ME_KEY); } catch {}
+          setMe(null);
+          window.location.href = "/login";
+        })
+        .catch(() => {}); // network error — keep cached state
+    }
+
+    checkSession();
+    // Also re-check periodically, not just on navigation — otherwise a user
+    // deactivated while idle on a single page (never triggering a pathname
+    // change) would keep its stale cached session until they happen to click
+    // somewhere.
+    const interval = setInterval(checkSession, 2 * 60_000);
+    return () => clearInterval(interval);
   }, [pathname]);
 
   async function logout() {
