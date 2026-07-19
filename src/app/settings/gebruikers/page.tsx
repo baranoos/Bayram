@@ -18,7 +18,7 @@ export default async function GebruikersPage() {
   }));
 
   return (
-    <main className="mx-auto max-w-3xl space-y-4 px-4 py-8">
+    <main className="mx-auto min-h-screen max-w-screen-2xl space-y-4 px-4 py-6 lg:px-6">
       <UsersManager initialUsers={initialUsers} currentUserId={me.id} />
     </main>
   );
