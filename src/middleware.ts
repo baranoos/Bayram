@@ -6,11 +6,6 @@ const PUBLIC_PATHS = ["/login"];
 
 const PUBLIC_API_PREFIXES = ["/api/auth/login", "/api/auth/status"];
 
-// Owner-only surface. This is a fast, edge-level check against the JWT's
-// role claim — the routes/page themselves re-check role AND active status
-// against the database, which is the authoritative check.
-const OWNER_ONLY_PREFIXES = ["/settings/gebruikers", "/api/users"];
-
 function matchesAnyPrefix(pathname: string, prefixes: string[]) {
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
@@ -20,18 +15,21 @@ function isPublicPath(pathname: string) {
   return matchesAnyPrefix(pathname, PUBLIC_API_PREFIXES);
 }
 
-function isOwnerOnlyPath(pathname: string) {
-  return matchesAnyPrefix(pathname, OWNER_ONLY_PREFIXES);
-}
-
-async function verifyAuthToken(token: string): Promise<{ role: string } | null> {
+// Role is deliberately not checked here. The JWT's role claim is baked in at
+// login time, so a session started before a role change (e.g. a promotion,
+// or the OWNER/EMPLOYEE migration) keeps its old value until the token is
+// reissued — middleware has no DB access to notice the drift. Owner-only
+// enforcement instead lives entirely in the Server Component / route handler
+// (requireOwner(), and the OWNER check in settings/gebruikers/page.tsx),
+// which always re-reads the current role from the database.
+async function verifyAuthToken(token: string): Promise<boolean> {
   const secret = process.env.AUTH_JWT_SECRET;
-  if (!secret) return null;
+  if (!secret) return false;
   try {
-    const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
-    return { role: String(payload.role ?? "") };
+    await jwtVerify(token, new TextEncoder().encode(secret));
+    return true;
   } catch {
-    return null;
+    return false;
   }
 }
 
@@ -51,8 +49,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
-  const auth = token ? await verifyAuthToken(token) : null;
-  const isAuthenticated = auth !== null;
+  const isAuthenticated = token ? await verifyAuthToken(token) : false;
 
   if (pathname === "/login") {
     if (isAuthenticated) {
@@ -72,13 +69,6 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("from", pathname);
     return NextResponse.redirect(loginUrl);
-  }
-
-  if (isOwnerOnlyPath(pathname) && auth.role !== "OWNER") {
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
-    }
-    return NextResponse.redirect(new URL("/settings", request.url));
   }
 
   const res = NextResponse.next();
