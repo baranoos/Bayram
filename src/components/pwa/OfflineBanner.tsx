@@ -11,9 +11,9 @@ import { usePWA } from "./PWAProvider";
  * States: offline · offline + pending count · syncing · success · failure
  */
 export function OfflineBanner() {
-  const { isOnline, isSyncing, pendingCount, lastSyncResult } = usePWA();
+  const { isOnline, isSyncing, pendingCount, failedCount, lastSyncResult, retryFailedItems } = usePWA();
   const [showSuccess, setShowSuccess] = useState(false);
-  const [showFailure, setShowFailure] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     if (!lastSyncResult || lastSyncResult.succeeded === 0) return;
@@ -22,15 +22,11 @@ export function OfflineBanner() {
     return () => clearTimeout(t);
   }, [lastSyncResult]);
 
-  useEffect(() => {
-    if (!lastSyncResult || lastSyncResult.failed === 0) return;
-    setShowFailure(true);
-    const t = setTimeout(() => setShowFailure(false), 6000);
-    return () => clearTimeout(t);
-  }, [lastSyncResult]);
-
-  // Offline state is shown in AppHeader — only show sync-related states here
-  if (!isSyncing && !showSuccess && !showFailure && (isOnline ? pendingCount === 0 : true)) {
+  // Offline state is shown in AppHeader — only show sync-related states here.
+  // failedCount is checked here (not just the transient lastSyncResult) so
+  // this stays visible across reloads/navigation until the user acts on it —
+  // nothing in this app ever retries a failed item on its own.
+  if (!isSyncing && !showSuccess && failedCount === 0 && (isOnline ? pendingCount === 0 : true)) {
     return null;
   }
 
@@ -43,24 +39,42 @@ export function OfflineBanner() {
     );
   }
 
-  if (showSuccess && lastSyncResult && lastSyncResult.succeeded > 0) {
+  if (showSuccess && lastSyncResult && lastSyncResult.succeeded > 0 && failedCount === 0) {
     return (
       <Pill color="emerald">
         <CheckIcon />
         <span>
           {lastSyncResult.succeeded}{" "}
           {lastSyncResult.succeeded === 1 ? "wijziging" : "wijzigingen"} gesynchroniseerd
-          {lastSyncResult.failed > 0 ? ` · ${lastSyncResult.failed} mislukt` : ""}
         </span>
       </Pill>
     );
   }
 
-  if (showFailure && lastSyncResult && lastSyncResult.failed > 0 && lastSyncResult.succeeded === 0) {
+  // Permanently failed — nothing in the sync queue ever retries these on its
+  // own, so this stays up (not a 6-second toast) and offers a real fix.
+  if (failedCount > 0) {
     return (
       <Pill color="red">
         <Dot className="bg-red-500 dark:bg-red-400" />
-        <span>{lastSyncResult.failed} mislukt — wordt opnieuw geprobeerd</span>
+        <span>
+          {failedCount} {failedCount === 1 ? "wijziging" : "wijzigingen"} niet gesynchroniseerd
+        </span>
+        <button
+          type="button"
+          onClick={async () => {
+            setRetrying(true);
+            try {
+              await retryFailedItems();
+            } finally {
+              setRetrying(false);
+            }
+          }}
+          disabled={retrying || !isOnline}
+          className="shrink-0 rounded-full border border-red-300 bg-white/60 px-2 py-0.5 text-[10px] font-semibold text-red-800 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-700 dark:bg-red-900/40 dark:text-red-200"
+        >
+          {retrying ? "Bezig…" : "Opnieuw"}
+        </button>
       </Pill>
     );
   }

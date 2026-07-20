@@ -23,6 +23,7 @@ export interface SyncQueueItem {
   lastError?:   string;
   lastRetryAt?: number;
   completedAt?: number;
+  claimedAt?:   number;
   type:         string;
   description:  string;
   opdrachtId?:  number;
@@ -116,6 +117,33 @@ export async function sqGetByStatus(status: SyncStatus): Promise<SyncQueueItem[]
   const tx    = db.transaction('sync_queue', 'readonly');
   const index = tx.objectStore('sync_queue').index('status');
   return req(index.getAll(status));
+}
+
+/**
+ * Atomically transitions an item from 'pending' (or a 'processing' item
+ * abandoned by a crashed/killed tab past `staleAfterMs`) to 'processing'.
+ *
+ * The page and the service worker both process this same queue from separate
+ * execution contexts (the page on 'online'/mount/manual sync, the SW on the
+ * Background Sync 'sync' event) with no other coordination between them.
+ * IndexedDB serializes readwrite transactions on the same object store across
+ * ALL contexts sharing an origin's database — so a get-then-put performed
+ * within one transaction is a safe mutex here: only one caller can ever see
+ * status === 'pending' and win the claim for a given id, which is exactly
+ * what prevents both contexts from submitting the same mutation twice.
+ */
+export async function sqClaim(id: string, staleAfterMs = 3 * 60_000): Promise<boolean> {
+  const db    = await getDB();
+  const tx    = db.transaction('sync_queue', 'readwrite');
+  const store = tx.objectStore('sync_queue');
+  const item  = await req<SyncQueueItem | undefined>(store.get(id));
+
+  if (!item) return false;
+  const abandoned = item.status === 'processing' && (Date.now() - (item.claimedAt ?? 0)) > staleAfterMs;
+  if (item.status !== 'pending' && !abandoned) return false;
+
+  await req(store.put({ ...item, status: 'processing', claimedAt: Date.now() }));
+  return true;
 }
 
 export async function sqDelete(id: string): Promise<void> {

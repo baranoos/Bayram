@@ -21,7 +21,7 @@ function loadCachedMe(): Me {
 export function AppHeader() {
   const pathname = usePathname();
   const [me, setMe] = useState<Me>(null);
-  const { isOnline, isSyncing, pendingCount, triggerSync, lastSyncAt, lastSyncResult } = usePWA();
+  const { isOnline, isSyncing, pendingCount, triggerSync, lastSyncAt, lastSyncResult, isInstallable, promptInstall } = usePWA();
 
   const [syncDone, setSyncDone] = useState(false);
   const prevSyncAt = useRef<Date | null>(null);
@@ -121,6 +121,25 @@ export function AppHeader() {
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500 dark:bg-amber-400" />
               Offline
             </span>
+          )}
+
+          {/* ── Install button ────────────────────────────────────────────────── */}
+          {/* beforeinstallprompt's default browser UI is suppressed (see the
+              capture effect in PWAProvider) specifically so it can be offered
+              here instead — an inspector needs the installed app, with its
+              offline cache, working before they lose signal in the field. */}
+          {isInstallable && (
+            <button
+              type="button"
+              onClick={promptInstall}
+              title="Installeer de app voor offline gebruik"
+              className="hidden items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-700 dark:border-slate-700 dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-400 sm:flex"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
+              </svg>
+              App installeren
+            </button>
           )}
 
           {/* ── Sync button ───────────────────────────────────────────────────── */}

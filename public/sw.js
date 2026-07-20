@@ -113,6 +113,37 @@ function idbGetAll(db, store) {
   });
 }
 
+/**
+ * Atomically transitions a sync_queue item from 'pending' (or an abandoned
+ * 'processing' item older than staleAfterMs) to 'processing'.
+ *
+ * The page (src/lib/pwa/sync-queue.ts) and this service worker both process
+ * the same queue independently — the page on 'online'/mount/manual sync,
+ * this worker on the Background Sync 'sync' event — with no other
+ * coordination between them. IndexedDB serializes readwrite transactions on
+ * the same object store across ALL contexts sharing an origin's database, so
+ * a get-then-put within one transaction is a safe cross-context mutex: only
+ * one side can ever win the claim for a given id, which is what prevents
+ * both from submitting the same mutation twice.
+ */
+function idbClaim(db, store, id, staleAfterMs) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    const os = tx.objectStore(store);
+    const getReq = os.get(id);
+    getReq.onsuccess = () => {
+      const item = getReq.result;
+      if (!item) return resolve(false);
+      const abandoned = item.status === 'processing' && (Date.now() - (item.claimedAt || 0)) > staleAfterMs;
+      if (item.status !== 'pending' && !abandoned) return resolve(false);
+      const putReq = os.put({ ...item, status: 'processing', claimedAt: Date.now() });
+      putReq.onsuccess = () => resolve(true);
+      putReq.onerror   = () => reject(putReq.error);
+    };
+    getReq.onerror = () => reject(getReq.error);
+  });
+}
+
 function generateId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
@@ -159,7 +190,11 @@ async function processSyncQueue() {
     return { succeeded: 0, failed: 0 };
   }
 
-  const items = await idbGetAllByIndex(db, 'sync_queue', 'status', 'pending');
+  const pending    = await idbGetAllByIndex(db, 'sync_queue', 'status', 'pending');
+  // Also pick up 'processing' items abandoned by a crashed/killed tab —
+  // idbClaim() only reclaims one once it's actually stale (see there).
+  const processing = await idbGetAllByIndex(db, 'sync_queue', 'status', 'processing');
+  const items = [...pending, ...processing];
   // Oldest first
   items.sort((a, b) => a.timestamp - b.timestamp);
 
@@ -167,6 +202,12 @@ async function processSyncQueue() {
   let failed    = 0;
 
   for (const item of items) {
+    // Claim before touching the network — if the page's own sync-queue.ts
+    // already claimed this item, skip it rather than submitting the same
+    // mutation twice.
+    const claimed = await idbClaim(db, 'sync_queue', item.id, 3 * 60_000).catch(() => false);
+    if (!claimed) continue;
+
     if (item.retries >= item.maxRetries) {
       await idbPut(db, 'sync_queue', { ...item, status: 'failed', lastRetryAt: Date.now() });
       failed++;
@@ -399,6 +440,15 @@ async function handleQueueableMutation(request) {
 
     try {
       const item = await queueRequest(request.url, request.method, headers, body);
+
+      // This path fires when navigator.onLine was true but the request still
+      // failed (weak signal, DNS hiccup, etc.) — unlike the app's own
+      // enqueueRequest(), nothing has registered a Background Sync yet for
+      // this item. Without this, it would only ever get picked up by a
+      // future page load while online or a manual sync tap.
+      if ('sync' in self.registration) {
+        self.registration.sync.register(SYNC_TAG).catch(() => {});
+      }
 
       // Notify all open tabs so pendingCount updates immediately
       self.clients.matchAll({ includeUncontrolled: true })

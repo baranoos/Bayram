@@ -12,6 +12,8 @@ import React, {
 import {
   processSyncQueue,
   getPendingCount,
+  getFailedCount,
+  retryFailed,
   enqueueRequest,
   type EnqueueOptions,
   type SyncQueueItem,
@@ -28,6 +30,8 @@ interface PWAContextValue {
   isSyncing: boolean;
   /** Number of mutations waiting to be sent to the server. */
   pendingCount: number;
+  /** Number of mutations that permanently failed (validation error, or retries exhausted) — these are never retried automatically. */
+  failedCount: number;
   /** Timestamp of the last completed sync run. */
   lastSyncAt: Date | null;
   /** Result summary of the last sync run. */
@@ -36,6 +40,8 @@ interface PWAContextValue {
   enqueue: (options: EnqueueOptions) => Promise<SyncQueueItem>;
   /** Flush the pending queue now (no-op when offline). */
   triggerSync: () => Promise<void>;
+  /** Give every permanently-failed mutation a fresh retry budget and flush immediately. */
+  retryFailedItems: () => Promise<void>;
   /** True when the browser has a deferred install prompt available. */
   isInstallable: boolean;
   /** Show the native "Add to Home Screen" prompt. */
@@ -67,6 +73,7 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
   const [isOnline,        setIsOnline       ] = useState(true);
   const [isSyncing,       setIsSyncing      ] = useState(false);
   const [pendingCount,    setPendingCount   ] = useState(0);
+  const [failedCount,     setFailedCount    ] = useState(0);
   const [lastSyncAt,      setLastSyncAt     ] = useState<Date | null>(null);
   const [lastSyncResult,  setLastSyncResult ] = useState<Pick<SyncResult, "succeeded" | "failed"> | null>(null);
   const [isInstallable,   setIsInstallable  ] = useState(false);
@@ -80,8 +87,9 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
 
   const refreshPendingCount = useCallback(async () => {
     try {
-      const count = await getPendingCount();
-      setPendingCount(count);
+      const [pending, failed] = await Promise.all([getPendingCount(), getFailedCount()]);
+      setPendingCount(pending);
+      setFailedCount(failed);
     } catch {
       // IDB unavailable (private-browsing, storage quota, etc.) — ignore
     }
@@ -114,6 +122,12 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
     },
     [refreshPendingCount]
   );
+
+  const retryFailedItems = useCallback(async () => {
+    await retryFailed();
+    await refreshPendingCount();
+    await triggerSync();
+  }, [refreshPendingCount, triggerSync]);
 
   const promptInstall = useCallback(() => {
     const prompt = deferredPrompt.current;
@@ -247,12 +261,24 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
-  // ── Periodic pending count refresh (every 30s) ─────────────────────────────
+  // ── Periodic pending-count refresh + sync retry (every 30s) ────────────────
+  // Background Sync (the 'online' event handler above, and the SW's own
+  // 'sync' event) is the primary trigger, but it's not universal — Safari/iOS
+  // has no Background Sync API at all, so without this, a queued item there
+  // only ever syncs on the next full page load or a manual tap. This poll is
+  // a safe backstop: triggerSync() is a no-op while offline or already
+  // syncing (see its own guards above), so this just periodically gives any
+  // stuck-but-online queue a chance to flush.
 
   useEffect(() => {
-    const interval = setInterval(() => refreshPendingCount(), 30_000);
+    const interval = setInterval(() => {
+      refreshPendingCount();
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
+        triggerSync();
+      }
+    }, 30_000);
     return () => clearInterval(interval);
-  }, [refreshPendingCount]);
+  }, [refreshPendingCount, triggerSync]);
 
   return (
     <PWAContext.Provider
@@ -260,10 +286,12 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
         isOnline,
         isSyncing,
         pendingCount,
+        failedCount,
         lastSyncAt,
         lastSyncResult,
         enqueue,
         triggerSync,
+        retryFailedItems,
         isInstallable,
         promptInstall,
         updateAvailable,

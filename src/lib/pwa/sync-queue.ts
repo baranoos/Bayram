@@ -10,6 +10,7 @@ import {
   sqGetAll,
   sqClearCompleted,
   sqCount,
+  sqClaim,
 } from './idb';
 
 export type { SyncQueueItem };
@@ -80,7 +81,14 @@ export async function processSyncQueue(): Promise<SyncResult> {
 
   let items: SyncQueueItem[];
   try {
-    items = await sqGetByStatus('pending');
+    // Include stale 'processing' items too — a tab that crashed/was killed
+    // mid-sync can leave one behind; sqClaim() only reclaims it once it's
+    // actually stale, so this can't steal a genuinely in-flight item.
+    const [pending, processing] = await Promise.all([
+      sqGetByStatus('pending'),
+      sqGetByStatus('processing'),
+    ]);
+    items = [...pending, ...processing];
   } catch {
     return result;
   }
@@ -89,6 +97,12 @@ export async function processSyncQueue(): Promise<SyncResult> {
   items.sort((a, b) => a.timestamp - b.timestamp);
 
   for (const item of items) {
+    // Claim before touching the network — if another context (the service
+    // worker's Background Sync handler, most likely) already claimed this
+    // item, skip it rather than submitting the same mutation twice.
+    const claimed = await sqClaim(item.id).catch(() => false);
+    if (!claimed) continue;
+
     result.processed++;
 
     if (item.retries >= item.maxRetries) {
@@ -186,5 +200,18 @@ export async function getAllQueueItems(): Promise<SyncQueueItem[]> {
     return await sqGetAll();
   } catch {
     return [];
+  }
+}
+
+/**
+ * Resets every 'failed' item back to 'pending' with a fresh retry budget.
+ * Nothing else in this module ever automatically retries a failed item —
+ * this is the only way one gets another attempt, so it must be reachable
+ * from the UI rather than left as dead code.
+ */
+export async function retryFailed(): Promise<void> {
+  const failedItems = await sqGetByStatus('failed');
+  for (const item of failedItems) {
+    await sqPut({ ...item, status: 'pending', retries: 0, lastError: undefined });
   }
 }
